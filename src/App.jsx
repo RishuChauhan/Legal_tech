@@ -34,7 +34,7 @@ if (!document.getElementById("lex-reset")) {
  *
  *  ↓ ↓ ↓  CHANGE THIS NUMBER TO TEST  ↓ ↓ ↓
  * ─────────────────────────────────────────────────────────────────────── */
-const TRIAL_DAYS_REMAINING = 7; // try: 7, 5, 3, 2, 1
+const TRIAL_DAYS_REMAINING = 4; // try: 7, 5, 3, 2, 1
 
 /* ─── Banner content & style per day bucket ──────────────────────────────── */
 function getBannerConfig(days) {
