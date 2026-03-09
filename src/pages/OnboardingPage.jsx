@@ -76,7 +76,14 @@ export default function OnboardingPage({ onComplete }) {
         <div style={{ marginBottom: 48, paddingTop: 48 }}>
           <Logo />
         </div>
-        <h1 style={{ fontSize: 26, fontWeight: 700, color: "#111", marginBottom: 8 }}>
+        <h1 style={{
+          fontSize: 26,
+          fontWeight: 700,
+          color: "#111",
+          marginBottom: 8,
+          letterSpacing: "-0.5px",
+          fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+        }}>
           Welcome to Lexlegis.ai
         </h1>
         <p style={{ fontSize: 14, color: "#9ca3af", marginBottom: 32 }}>
