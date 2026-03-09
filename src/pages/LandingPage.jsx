@@ -36,7 +36,7 @@ export default function LandingPage({ onLogin }) {
             background: "#111", color: "white", fontSize: 14, cursor: "pointer",
             display: "flex", alignItems: "center", gap: 5,
           }}>
-            Start Free Trial <span style={{ fontSize: 16, lineHeight: 1 }}>›</span>
+            See how it works <span style={{ fontSize: 16, lineHeight: 1 }}>›</span>
           </button>
         </div>
       </header>
