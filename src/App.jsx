@@ -22,11 +22,150 @@ if (!document.getElementById("lex-reset")) {
   document.head.appendChild(s);
 }
 
+/* ─── Trial banner config ─────────────────────────────────────────────────
+ *
+ *  HOW TO TEST DIFFERENT DAYS:
+ *  Change the TRIAL_DAYS_REMAINING constant below to any number (1–7).
+ *
+ *  In production, replace this with your real calculation, e.g.:
+ *    const trialStart = new Date(user.trialStartedAt);
+ *    const TRIAL_DAYS_REMAINING = 7 - Math.floor((Date.now() - trialStart) / 86400000);
+ *
+ *  ↓ ↓ ↓  CHANGE THIS NUMBER TO TEST  ↓ ↓ ↓
+ * ─────────────────────────────────────────────────────────────────────── */
+const TRIAL_DAYS_REMAINING = 7; // try: 7, 5, 3, 2, 1
+
+/* ─── Banner content & style per day bucket ──────────────────────────────── */
+function getBannerConfig(days) {
+  if (days >= 5) {
+    return {
+      bg:      "#1a3a2a",
+      color:   "white",
+      icon:    "✦",
+      message: "You're on a free trial · Lock in 20% off if you upgrade before Day 7",
+      cta:     "Upgrade Now",
+      ctaBg:   "rgba(255,255,255,0.15)",
+      ctaHover:"rgba(255,255,255,0.25)",
+      ctaColor:"white",
+    };
+  }
+  if (days === 4 || days === 3) {
+    return {
+      bg:      "#9c5428a8",
+      color:   "white",
+      icon:    "⏳",
+      message: `${days} days left · Your research history & saved files will be cleared`,
+      cta:     "Upgrade & Keep Everything",
+      ctaBg:   "rgba(255,255,255,0.15)",
+      ctaHover:"rgba(255,255,255,0.28)",
+      ctaColor:"white",
+    };
+  }
+  if (days === 2) {
+    return {
+      bg:      "#c87230",
+      color:   "white",
+      icon:    "⚠",
+      message: "2 days left · Don't lose your saved cases and drafts",
+      cta:     "Upgrade & Keep Everything",
+      ctaBg:   "rgba(255,255,255,0.18)",
+      ctaHover:"rgba(255,255,255,0.3)",
+      ctaColor:"white",
+    };
+  }
+  // days <= 1
+  return {
+    bg:      "#991b1b",
+    color:   "white",
+    icon:    "●",
+    message: "Trial ends today · Upgrade now to keep all your work",
+    cta:     "Upgrade & Keep Everything",
+    ctaBg:   "white",
+    ctaHover:"#f3f4f6",
+    ctaColor:"#991b1b",
+  };
+}
+
+/* ─── Trial Banner component ─────────────────────────────────────────────── */
+function TrialBanner({ daysRemaining, onUpgradeClick }) {
+  const [dismissed, setDismissed] = useState(false);
+  const [ctaHovered, setCtaHovered] = useState(false);
+  const cfg = getBannerConfig(daysRemaining);
+
+  if (dismissed) return null;
+
+  return (
+    <div style={{
+      background: cfg.bg,
+      color: cfg.color,
+      padding: "9px 16px",
+      fontSize: 13,
+      flexShrink: 0,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 10,
+      position: "relative",
+    }}>
+      {/* Icon */}
+      <span style={{ fontSize: 12, opacity: 0.85 }}>{cfg.icon}</span>
+
+      {/* Message */}
+      <span style={{ opacity: 0.92 }}>{cfg.message}</span>
+
+      {/* CTA pill button */}
+      <button
+        onClick={onUpgradeClick}
+        onMouseEnter={() => setCtaHovered(true)}
+        onMouseLeave={() => setCtaHovered(false)}
+        style={{
+          padding: "4px 14px",
+          border: "1px solid rgba(255,255,255,0.35)",
+          borderRadius: 100,
+          background: ctaHovered ? cfg.ctaHover : cfg.ctaBg,
+          color: cfg.ctaColor,
+          fontSize: 12,
+          fontWeight: 700,
+          cursor: "pointer",
+          letterSpacing: "0.01em",
+          transition: "background 0.15s",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {cfg.cta} →
+      </button>
+
+      {/* Dismiss */}
+      <button
+        onClick={() => setDismissed(true)}
+        style={{
+          position: "absolute",
+          right: 14,
+          top: "50%",
+          transform: "translateY(-50%)",
+          background: "none",
+          border: "none",
+          color: cfg.color,
+          opacity: 0.45,
+          fontSize: 16,
+          cursor: "pointer",
+          lineHeight: 1,
+          padding: "2px 4px",
+        }}
+        title="Dismiss"
+      >
+        ✕
+      </button>
+    </div>
+  );
+}
+
+/* ─── App ─────────────────────────────────────────────────────────────────── */
 export default function App() {
-  const [page,           setPage]           = useState("landing");  // landing | app | settings
-  const [appTab,         setAppTab]         = useState("dashboard");
-  const [settingsTab,    setSettingsTab]    = useState("billing");
-  const [settingsContent,setSettingsContent]= useState("billing");  // billing | checkout
+  const [page,            setPage]           = useState("landing");
+  const [appTab,          setAppTab]         = useState("dashboard");
+  const [settingsTab,     setSettingsTab]    = useState("billing");
+  const [settingsContent, setSettingsContent]= useState("billing");
 
   const goSettings = (sub = "billing") => {
     setPage("settings");
@@ -61,17 +200,11 @@ export default function App() {
   /* ── Main App ── */
   return (
     <div style={{ display: "flex", flexDirection: "column", width: "100vw", height: "100vh", overflow: "hidden" }}>
-      {/* Trial banner */}
-      <div style={{
-        background: "white", color: "black", textAlign: "center",
-        padding: "9px 16px", fontSize: 13, flexShrink: 0,
-      }}>
-        Free Trial: 3 days remaining{" "}
-        <a onClick={() => goSettings("billing")} href="#"
-          style={{ color: "black", fontWeight: 700, textDecoration: "underline" }}>
-          Upgrade Now
-        </a>
-      </div>
+
+      <TrialBanner
+        daysRemaining={TRIAL_DAYS_REMAINING}
+        onUpgradeClick={() => goSettings("billing")}
+      />
 
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
         <AppSidebar active={appTab} onNav={setAppTab} />
