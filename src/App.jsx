@@ -179,18 +179,6 @@ export default function App() {
     return <LandingPage onLogin={() => setPage("onboarding")} />;
   }
 
-  /* ── Onboarding ── */
-  if (page === "onboarding") {
-    return (
-      <OnboardingPage
-        onComplete={(moduleId) => {
-          setAppTab(moduleId);
-          setPage("app");
-        }}
-      />
-    );
-  }
-
   /* ── Settings ── */
   if (page === "settings") {
     return (
@@ -212,7 +200,7 @@ export default function App() {
 
   /* ── Main App ── */
   return (
-    <div style={{ display: "flex", flexDirection: "column", width: "100vw", height: "100vh", overflow: "hidden" }}>
+    <div style={{ position: "relative", display: "flex", flexDirection: "column", width: "100vw", height: "100vh", overflow: "hidden" }}>
 
       <TrialBanner
         daysRemaining={TRIAL_DAYS_REMAINING}
@@ -235,6 +223,26 @@ export default function App() {
           }
         </div>
       </div>
+
+      {page === "onboarding" && (
+        <div style={{
+          position: "absolute",
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: "rgba(0,0,0,0.4)",
+          backdropFilter: "blur(4px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 9999
+        }}>
+          <OnboardingPage
+            onComplete={(moduleId) => {
+              setAppTab(moduleId);
+              setPage("app");
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }

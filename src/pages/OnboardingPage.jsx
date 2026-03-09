@@ -53,27 +53,21 @@ export default function OnboardingPage({ onComplete }) {
   return (
     <div
       style={{
-        width: "100vw",
-        height: "100vh",
-        background: "#faf9f6",
+        background: "white",
+        borderRadius: 20,
+        boxShadow: "0 10px 40px rgba(0,0,0,0.12)",
+        maxWidth: 520,
+        width: "100%",
+        padding: "48px 40px",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
+        textAlign: "center",
+        maxHeight: "90vh",
         overflow: "auto",
       }}
     >
-      <div
-        style={{
-          maxWidth: 480,
-          margin: "0 auto",
-          width: "100%",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          textAlign: "center",
-        }}
-      >
-        <div style={{ marginBottom: 48, paddingTop: 48 }}>
+        <div style={{ marginBottom: 32 }}>
           <Logo />
         </div>
         <h1 style={{
@@ -122,12 +116,10 @@ export default function OnboardingPage({ onComplete }) {
             textDecoration: "underline",
             cursor: "pointer",
             marginTop: 24,
-            paddingBottom: 48,
           }}
         >
           I'll explore on my own →
         </div>
-      </div>
     </div>
   );
 }
