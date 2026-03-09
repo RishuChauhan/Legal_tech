@@ -6,6 +6,7 @@ import BillingPage      from "./pages/BillingPage";
 import CheckoutPage     from "./pages/CheckoutPage";
 import AppSidebar       from "./components/AppSidebar";
 import SettingsSidebar  from "./components/SettingsSidebar";
+import OnboardingPage   from "./pages/OnboardingPage";
 
 /* inject global reset once */
 if (!document.getElementById("lex-reset")) {
@@ -175,7 +176,19 @@ export default function App() {
 
   /* ── Landing ── */
   if (page === "landing") {
-    return <LandingPage onLogin={() => setPage("app")} />;
+    return <LandingPage onLogin={() => setPage("onboarding")} />;
+  }
+
+  /* ── Onboarding ── */
+  if (page === "onboarding") {
+    return (
+      <OnboardingPage
+        onComplete={(moduleId) => {
+          setAppTab(moduleId);
+          setPage("app");
+        }}
+      />
+    );
   }
 
   /* ── Settings ── */
