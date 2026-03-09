@@ -77,7 +77,6 @@ function Tooltip({ text }) {
 function FeatureRow({ feature, hovered }) {
   return (
     <div style={{ display: "flex", alignItems: "flex-start", gap: 11, marginBottom: 13 }}>
-      {/* Check SVG */}
       <svg width="17" height="17" viewBox="0 0 17 17" fill="none" style={{ flexShrink: 0, marginTop: 1 }}>
         <circle cx="8.5" cy="8.5" r="8.5"
           fill={hovered ? "#eef0f3" : "#f3f4f6"}
@@ -103,7 +102,7 @@ function FeatureRow({ feature, hovered }) {
 }
 
 /* ─── Plan Card ───────────────────────────────────────────────────────────── */
-function PlanCard({ title, subtitle, data, features, planKey, onChoose, cycle }) {
+function PlanCard({ title, subtitle, data, features, planKey, onChoose, cycle, mostPopular }) {
   const [hovered, setHovered] = useState(false);
 
   return (
@@ -136,15 +135,44 @@ function PlanCard({ title, subtitle, data, features, planKey, onChoose, cycle })
         transition: "opacity 0.28s",
       }} />
 
+      {/* Most Popular badge — floats above the card */}
+      {mostPopular && (
+        <div style={{
+          position: "absolute", top: 0, left: "50%",
+          transform: hovered ? "translate(-50%, -60%)" : "translate(-50%, -50%)",
+          zIndex: 10,
+          transition: "transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)",
+        }}>
+          <span style={{
+            display: "inline-block",
+            fontSize: 10, fontWeight: 700,
+            color: hovered ? "white" : ACCENT.text,
+            background: hovered ? ACCENT.btnBg : "#eef0f3",
+            border: `1px solid ${hovered ? ACCENT.border : "#d1d5db"}`,
+            borderRadius: 999,
+            padding: "4px 12px",
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+            whiteSpace: "nowrap",
+            boxShadow: hovered ? `0 4px 14px ${ACCENT.glow}` : "0 1px 6px rgba(0,0,0,0.07)",
+            transition: "background 0.22s, color 0.22s, border-color 0.22s, box-shadow 0.22s",
+          }}>
+            Most Popular
+          </span>
+        </div>
+      )}
+
       {/* Plan label + subtitle */}
       <div style={{ marginBottom: 24 }}>
-        <p style={{
-          fontSize: 11, fontWeight: 800, letterSpacing: "0.12em",
-          textTransform: "uppercase",
-          color: hovered ? ACCENT.text : "#9ca3af",
-          marginBottom: 6,
-          transition: "color 0.22s",
-        }}>{title}</p>
+        <div style={{ marginBottom: 6 }}>
+          <p style={{
+            fontSize: 11, fontWeight: 800, letterSpacing: "0.12em",
+            textTransform: "uppercase",
+            color: hovered ? ACCENT.text : "#9ca3af",
+            margin: 0,
+            transition: "color 0.22s",
+          }}>{title}</p>
+        </div>
         <p style={{ fontSize: 12.5, color: "#9ca3af", lineHeight: 1.5 }}>{subtitle}</p>
       </div>
 
@@ -264,9 +292,9 @@ export default function BillingPage({ onChoose }) {
         </p>
       </div>
 
-      {/* ── Toggle ── */}
-      <div style={{ maxWidth: 860, margin: "0 auto 32px" }}>
-        <div style={{ display: "inline-flex", background: "#eeece8", borderRadius: 8, padding: "3px" }}>
+      {/* ── Toggle — centered ── */}
+      <div style={{ maxWidth: 860, margin: "0 auto 32px", display: "flex", justifyContent: "center" }}>
+        <div style={{ display: "inline-flex", background: "#eeece8", borderRadius: 999, padding: "3px" }}>
           {["Monthly", "Annual"].map(c => {
             const active = cycle === c.toLowerCase();
             return (
@@ -274,7 +302,7 @@ export default function BillingPage({ onChoose }) {
                 key={c}
                 onClick={() => setCycle(c.toLowerCase())}
                 style={{
-                  padding: "7px 20px", border: "none", borderRadius: 6, cursor: "pointer",
+                  padding: "7px 20px", border: "none", borderRadius: 999, cursor: "pointer",
                   background: active ? "white" : "transparent",
                   boxShadow: active ? "0 1px 5px rgba(0,0,0,0.08)" : "none",
                   fontSize: 13, fontWeight: active ? 600 : 400,
@@ -287,8 +315,9 @@ export default function BillingPage({ onChoose }) {
                 {c === "Annual" && (
                   <span style={{
                     background: "#dcfce7", color: "#15803d",
-                    fontSize: 10, fontWeight: 700, padding: "2px 7px",
-                    borderRadius: 4, border: "1px solid #bbf7d0",
+                    fontSize: 10, fontWeight: 700, padding: "2px 9px",
+                    borderRadius: 999,
+                    border: "1px solid #bbf7d0",
                   }}>−20%</span>
                 )}
               </button>
@@ -307,6 +336,7 @@ export default function BillingPage({ onChoose }) {
           planKey="professional"
           onChoose={onChoose}
           cycle={cycle}
+          mostPopular={true}
         />
         <PlanCard
           title="Enterprise"

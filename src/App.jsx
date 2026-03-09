@@ -8,7 +8,6 @@ import AppSidebar       from "./components/AppSidebar";
 import SettingsSidebar  from "./components/SettingsSidebar";
 import OnboardingPage   from "./pages/OnboardingPage";
 
-/* inject global reset once */
 if (!document.getElementById("lex-reset")) {
   const s = document.createElement("style");
   s.id = "lex-reset";
@@ -23,140 +22,164 @@ if (!document.getElementById("lex-reset")) {
   document.head.appendChild(s);
 }
 
-/* ─── Trial banner config ─────────────────────────────────────────────────
- *
- *  HOW TO TEST DIFFERENT DAYS:
- *  Change the TRIAL_DAYS_REMAINING constant below to any number (1–7).
- *
- *  In production, replace this with your real calculation, e.g.:
- *    const trialStart = new Date(user.trialStartedAt);
- *    const TRIAL_DAYS_REMAINING = 7 - Math.floor((Date.now() - trialStart) / 86400000);
- *
- *  ↓ ↓ ↓  CHANGE THIS NUMBER TO TEST  ↓ ↓ ↓
- * ─────────────────────────────────────────────────────────────────────── */
-const TRIAL_DAYS_REMAINING = 4; // try: 7, 5, 3, 2, 1
+const TRIAL_DAYS_REMAINING = 4;
 
-/* ─── Banner content & style per day bucket ──────────────────────────────── */
+/* ─── SVG icons ───────────────────────────────────────────────────────────── */
+const IconInfo = ({ color }) => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}>
+    <circle cx="7" cy="7" r="6" stroke={color} strokeWidth="1.25"/>
+    <path d="M7 6.5v3.5" stroke={color} strokeWidth="1.3" strokeLinecap="round"/>
+    <circle cx="7" cy="4.5" r="0.75" fill={color}/>
+  </svg>
+);
+
+const IconClock = ({ color }) => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}>
+    <circle cx="7" cy="7" r="6" stroke={color} strokeWidth="1.25"/>
+    <path d="M7 4v3.2l2 1.4" stroke={color} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+const IconAlert = ({ color }) => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}>
+    <path d="M7 1.5L13 12.5H1L7 1.5Z" stroke={color} strokeWidth="1.25" strokeLinejoin="round"/>
+    <path d="M7 5.5v3" stroke={color} strokeWidth="1.3" strokeLinecap="round"/>
+    <circle cx="7" cy="10" r="0.75" fill={color}/>
+  </svg>
+);
+
+/* ─── Banner config ───────────────────────────────────────────────────────── */
 function getBannerConfig(days) {
   if (days >= 5) {
     return {
-      bg:      "#1a3a2a",
-      color:   "white",
-      icon:    "✦",
-      message: "You're on a free trial · Lock in 20% off if you upgrade before Day 7",
-      cta:     "Upgrade Now",
-      ctaBg:   "rgba(255,255,255,0.15)",
-      ctaHover:"rgba(255,255,255,0.25)",
-      ctaColor:"white",
+      bg:        "#f0f3ee",
+      border:    "#c8d4c2",
+      accentBar: "#6a8f61",
+      color:     "#2d4228",
+      dimColor:  "#5a7254",
+      Icon:      IconInfo,
+      message:   "You are on a free trial — upgrade before Day 7 to lock in 20% off your annual plan.",
+      cta:       "Upgrade Now",
+      ctaBg:     "#3a5c33",
+      ctaHover:  "#2d4228",
+      ctaColor:  "white",
     };
   }
   if (days === 4 || days === 3) {
     return {
-      bg:      "#9c5428a8",
-      color:   "white",
-      icon:    "⏳",
-      message: `${days} days left · Your research history & saved files will be cleared`,
-      cta:     "Upgrade & Keep Everything",
-      ctaBg:   "rgba(255,255,255,0.15)",
-      ctaHover:"rgba(255,255,255,0.28)",
-      ctaColor:"white",
+      bg:        "#faf6ec",
+      border:    "#e2ceA0",
+      accentBar: "#b08a30",
+      color:     "#4a3510",
+      dimColor:  "#7a5e28",
+      Icon:      IconClock,
+      message:   `${days} days remaining — your saved research, case files, and drafts will be removed at trial end.`,
+      cta:       "Upgrade & Retain Access",
+      ctaBg:     "#8a6520",
+      ctaHover:  "#6e5018",
+      ctaColor:  "white",
     };
   }
   if (days === 2) {
     return {
-      bg:      "#c87230",
-      color:   "white",
-      icon:    "⚠",
-      message: "2 days left · Don't lose your saved cases and drafts",
-      cta:     "Upgrade & Keep Everything",
-      ctaBg:   "rgba(255,255,255,0.18)",
-      ctaHover:"rgba(255,255,255,0.3)",
-      ctaColor:"white",
+      bg:        "#faf1ec",
+      border:    "#e8c4a8",
+      accentBar: "#b56030",
+      color:     "#4a2010",
+      dimColor:  "#7a4428",
+      Icon:      IconAlert,
+      message:   "2 days remaining — secure your case files and drafts before they are cleared.",
+      cta:       "Upgrade & Retain Access",
+      ctaBg:     "#9a3e18",
+      ctaHover:  "#7c3010",
+      ctaColor:  "white",
     };
   }
-  // days <= 1
   return {
-    bg:      "#991b1b",
-    color:   "white",
-    icon:    "●",
-    message: "Trial ends today · Upgrade now to keep all your work",
-    cta:     "Upgrade & Keep Everything",
-    ctaBg:   "white",
-    ctaHover:"#f3f4f6",
-    ctaColor:"#991b1b",
+    bg:        "#f9eeee",
+    border:    "#e8b8b8",
+    accentBar: "#a83030",
+    color:     "#4a1010",
+    dimColor:  "#7a3030",
+    Icon:      IconAlert,
+    message:   "Your trial expires today — upgrade now to retain all your work and research history.",
+    cta:       "Upgrade Immediately",
+    ctaBg:     "#8b1a1a",
+    ctaHover:  "#6e1414",
+    ctaColor:  "white",
   };
 }
 
-/* ─── Trial Banner component ─────────────────────────────────────────────── */
+/* ─── Trial Banner ───────────────────────────────────────────────────────── */
 function TrialBanner({ daysRemaining, onUpgradeClick }) {
   const [dismissed, setDismissed] = useState(false);
   const [ctaHovered, setCtaHovered] = useState(false);
   const cfg = getBannerConfig(daysRemaining);
+  const { Icon } = cfg;
 
   if (dismissed) return null;
 
   return (
     <div style={{
       background: cfg.bg,
+      borderBottom: `1px solid ${cfg.border}`,
       color: cfg.color,
-      padding: "9px 16px",
-      fontSize: 13,
+      padding: "8px 48px 8px 16px",
+      fontSize: 12.5,
       flexShrink: 0,
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      gap: 10,
+      gap: 9,
       position: "relative",
+      // Thin left accent bar
+      boxShadow: `inset 3px 0 0 ${cfg.accentBar}`,
     }}>
-      {/* Icon */}
-      <span style={{ fontSize: 12, opacity: 0.85 }}>{cfg.icon}</span>
 
-      {/* Message */}
-      <span style={{ opacity: 0.92 }}>{cfg.message}</span>
+      <Icon color={cfg.accentBar} />
 
-      {/* CTA pill button */}
+      <span style={{ color: cfg.color, fontWeight: 500, letterSpacing: "0.01em", lineHeight: 1.4 }}>
+        {cfg.message}
+      </span>
+
       <button
         onClick={onUpgradeClick}
         onMouseEnter={() => setCtaHovered(true)}
         onMouseLeave={() => setCtaHovered(false)}
         style={{
           padding: "4px 14px",
-          border: "1px solid rgba(255,255,255,0.35)",
+          border: "none",
           borderRadius: 100,
           background: ctaHovered ? cfg.ctaHover : cfg.ctaBg,
           color: cfg.ctaColor,
-          fontSize: 12,
-          fontWeight: 700,
+          fontSize: 11.5,
+          fontWeight: 600,
           cursor: "pointer",
-          letterSpacing: "0.01em",
+          letterSpacing: "0.03em",
           transition: "background 0.15s",
           whiteSpace: "nowrap",
+          flexShrink: 0,
         }}
       >
         {cfg.cta} →
       </button>
 
-      {/* Dismiss */}
       <button
         onClick={() => setDismissed(true)}
+        onMouseEnter={e => e.currentTarget.style.opacity = "0.65"}
+        onMouseLeave={e => e.currentTarget.style.opacity = "0.28"}
         style={{
-          position: "absolute",
-          right: 14,
-          top: "50%",
+          position: "absolute", right: 14, top: "50%",
           transform: "translateY(-50%)",
-          background: "none",
-          border: "none",
-          color: cfg.color,
-          opacity: 0.45,
-          fontSize: 16,
-          cursor: "pointer",
-          lineHeight: 1,
-          padding: "2px 4px",
+          background: "none", border: "none",
+          color: cfg.color, opacity: 0.28,
+          fontSize: 13, cursor: "pointer",
+          lineHeight: 1, padding: "2px 4px",
+          transition: "opacity 0.15s",
+          fontWeight: 300,
         }}
         title="Dismiss"
-      >
-        ✕
-      </button>
+      >✕</button>
     </div>
   );
 }
@@ -174,12 +197,10 @@ export default function App() {
     setSettingsContent(sub);
   };
 
-  /* ── Landing ── */
   if (page === "landing") {
     return <LandingPage onLogin={() => setPage("onboarding")} />;
   }
 
-  /* ── Settings ── */
   if (page === "settings") {
     return (
       <div style={{ display: "flex", width: "100vw", height: "100vh", overflow: "hidden" }}>
@@ -198,7 +219,6 @@ export default function App() {
     );
   }
 
-  /* ── Main App ── */
   return (
     <div style={{ position: "relative", display: "flex", flexDirection: "column", width: "100vw", height: "100vh", overflow: "hidden" }}>
 
@@ -230,10 +250,8 @@ export default function App() {
           top: 0, left: 0, right: 0, bottom: 0,
           background: "rgba(0,0,0,0.4)",
           backdropFilter: "blur(4px)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          zIndex: 9999
+          display: "flex", alignItems: "center", justifyContent: "center",
+          zIndex: 9999,
         }}>
           <OnboardingPage
             onComplete={(moduleId) => {
