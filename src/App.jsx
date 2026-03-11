@@ -7,7 +7,8 @@ import CheckoutPage     from "./pages/CheckoutPage";
 import AppSidebar       from "./components/AppSidebar";
 import SettingsSidebar  from "./components/SettingsSidebar";
 import OnboardingPage   from "./pages/OnboardingPage";
-
+import DraftPage        from "./pages/Draftpage";
+ 
 if (!document.getElementById("lex-reset")) {
   const s = document.createElement("style");
   s.id = "lex-reset";
@@ -132,7 +133,6 @@ function TrialBanner({ daysRemaining, onUpgradeClick }) {
       justifyContent: "center",
       gap: 9,
       position: "relative",
-      // Thin left accent bar
       boxShadow: `inset 3px 0 0 ${cfg.accentBar}`,
     }}>
 
@@ -232,6 +232,8 @@ export default function App() {
         <div style={{ flex: 1, overflow: "auto" }}>
           {appTab === "dashboard"
             ? <Dashboard onNav={setAppTab} />
+            : appTab === "draft"
+            ? <DraftPage />
             : (
               <div style={{ padding: 40, background: "#faf9f6", minHeight: "100%" }}>
                 <h1 style={{ fontSize: 24, fontWeight: 600, color: "#111", textTransform: "capitalize", marginBottom: 10 }}>
