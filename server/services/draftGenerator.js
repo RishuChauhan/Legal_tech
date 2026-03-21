@@ -1,17 +1,9 @@
 // ─── Draft Generation Service ──────────────────────────────────────────────
-// Uses Claude API to generate structured legal document sections.
+// Uses Gemini to generate structured legal document sections.
 // Falls back to template-based generation if LLM is unavailable.
 
-import Anthropic from "@anthropic-ai/sdk";
+import { generateJSON } from "./llmClient.js";
 import crypto from "crypto";
-
-let anthropic = null;
-function getClient() {
-  if (!anthropic && process.env.ANTHROPIC_API_KEY) {
-    anthropic = new Anthropic();
-  }
-  return anthropic;
-}
 
 // ─── Template-based fallback sections ──────────────────────────────────────
 
@@ -102,9 +94,6 @@ function buildFallbackSections(config) {
 // ─── LLM-based draft generation ────────────────────────────────────────────
 
 async function generateWithLLM(config) {
-  const client = getClient();
-  if (!client) return null;
-
   const { documentType, template, clauses, rulebooks, referenceBlocks, instructions, entities } = config;
   const selectedClauses = (clauses || [])
     .filter(c => typeof c === "string" ? true : c.selected)
@@ -132,31 +121,16 @@ Requirements:
 - Mark areas needing user input with [__]
 - Return ONLY the JSON array, no markdown or explanation`;
 
-  try {
-    const response = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 4096,
-      messages: [{ role: "user", content: prompt }],
-    });
+  const sections = await generateJSON(prompt, { maxTokens: 4096, jsonType: "array" });
+  if (!Array.isArray(sections)) return null;
 
-    const text = response.content[0]?.text;
-    if (!text) return null;
-
-    const jsonMatch = text.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) return null;
-
-    const sections = JSON.parse(jsonMatch[0]);
-    return sections.map((s, i) => ({
-      id: `s${i}`,
-      title: s.title,
-      body: s.body,
-      clauseSource: s.clauseSource || null,
-      editable: true,
-    }));
-  } catch (err) {
-    console.error("LLM draft generation failed:", err.message);
-    return null;
-  }
+  return sections.map((s, i) => ({
+    id: `s${i}`,
+    title: s.title,
+    body: s.body,
+    clauseSource: s.clauseSource || null,
+    editable: true,
+  }));
 }
 
 // ─── Main Generation Function ──────────────────────────────────────────────

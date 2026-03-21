@@ -2,7 +2,7 @@
 // Combines rule-based pre/post-processing with LLM structured extraction.
 // If LLM fails, falls back to pure rule-based output. Never returns empty fields.
 
-import Anthropic from "@anthropic-ai/sdk";
+import { generateJSON } from "./llmClient.js";
 import {
   detectDocumentType,
   detectJurisdiction,
@@ -11,16 +11,6 @@ import {
   recommendClauses,
   mapRulebooks,
 } from "./templateRegistry.js";
-
-// ─── LLM Client ───────────────────────────────────────────────────────────
-
-let anthropic = null;
-function getClient() {
-  if (!anthropic && process.env.ANTHROPIC_API_KEY) {
-    anthropic = new Anthropic();
-  }
-  return anthropic;
-}
 
 // ─── Rule-based party extraction ───────────────────────────────────────────
 
@@ -69,17 +59,7 @@ function extractPurpose(intentText) {
 // ─── LLM Structured Extraction ─────────────────────────────────────────────
 
 async function extractWithLLM(intentText, ruleBasedContext) {
-  const client = getClient();
-  if (!client) return null;
-
-  try {
-    const response = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1024,
-      messages: [
-        {
-          role: "user",
-          content: `Analyse this legal document drafting request and extract structured information.
+  const prompt = `Analyse this legal document drafting request and extract structured information.
 
 Intent: "${intentText}"
 
@@ -99,22 +79,9 @@ Extract the following as JSON:
   "clarifyingQuestions": ["questions to ask if intent is ambiguous, max 3"]
 }
 
-Return ONLY valid JSON, no markdown or explanation.`,
-        },
-      ],
-    });
+Return ONLY valid JSON, no markdown or explanation.`;
 
-    const text = response.content[0]?.text;
-    if (!text) return null;
-
-    // Parse JSON from response (handle potential markdown wrapping)
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return null;
-    return JSON.parse(jsonMatch[0]);
-  } catch (err) {
-    console.error("LLM extraction failed, using rule-based fallback:", err.message);
-    return null;
-  }
+  return generateJSON(prompt, { maxTokens: 1024, jsonType: "object" });
 }
 
 // ─── Main Analysis Function ────────────────────────────────────────────────

@@ -3,15 +3,7 @@
 // Uses rule-based section detection + optional LLM classification.
 
 import crypto from "crypto";
-import Anthropic from "@anthropic-ai/sdk";
-
-let anthropic = null;
-function getClient() {
-  if (!anthropic && process.env.ANTHROPIC_API_KEY) {
-    anthropic = new Anthropic();
-  }
-  return anthropic;
-}
+import { generateJSON } from "./llmClient.js";
 
 // ─── Text Extraction ───────────────────────────────────────────────────────
 
@@ -204,8 +196,7 @@ function detectDocumentTypeFromContent(text) {
 // ─── LLM-enhanced block classification (optional) ──────────────────────────
 
 async function classifyBlocksWithLLM(sections) {
-  const client = getClient();
-  if (!client || sections.length === 0) return null;
+  if (sections.length === 0) return null;
 
   // Only send first 15 sections to avoid token limits
   const toClassify = sections.slice(0, 15).map((s, i) => ({
@@ -214,13 +205,7 @@ async function classifyBlocksWithLLM(sections) {
     preview: s.body.slice(0, 200),
   }));
 
-  try {
-    const response = await client.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 1024,
-      messages: [{
-        role: "user",
-        content: `Classify these legal document sections. For each, return the type and importance.
+  const prompt = `Classify these legal document sections. For each, return the type and importance.
 
 Sections:
 ${toClassify.map(s => `[${s.index}] "${s.title}": ${s.preview}`).join("\n\n")}
@@ -235,18 +220,9 @@ Types:
 - recital: background/whereas statements
 
 Importance "high" if it involves obligations, liabilities, penalties, or indemnification.
-Return ONLY the JSON array.`,
-      }],
-    });
+Return ONLY the JSON array.`;
 
-    const text = response.content[0]?.text;
-    const jsonMatch = text?.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) return null;
-    return JSON.parse(jsonMatch[0]);
-  } catch (err) {
-    console.error("LLM block classification failed:", err.message);
-    return null;
-  }
+  return generateJSON(prompt, { maxTokens: 1024, jsonType: "array" });
 }
 
 // ─── Main Parse Function ───────────────────────────────────────────────────
