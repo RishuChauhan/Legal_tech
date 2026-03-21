@@ -1,41 +1,44 @@
-// ─── Shared LLM Client (Google Gemini) ─────────────────────────────────────
-// Centralizes Gemini client init, prompt execution, and JSON extraction.
-// Uses gemini-2.0-flash (free tier: 15 RPM, 1M TPM).
+// ─── Shared LLM Client (Groq) ───────────────────────────────────────────────
+// Centralizes Groq client init, prompt execution, and JSON extraction.
+// Uses llama-3.3-70b-versatile via Groq's OpenAI-compatible API.
+// Free tier: 30 RPM, 14,400 req/day.
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
-let genAI = null;
-let model = null;
-
-function getModel() {
-  if (!model && process.env.GEMINI_API_KEY) {
-    genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-  }
-  return model;
-}
+const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+const DEFAULT_MODEL = "llama-3.3-70b-versatile";
 
 /**
- * Generate a response from Gemini and parse as JSON.
+ * Generate a response from Groq and parse as JSON.
  * Returns parsed JSON object/array, or null on failure.
  *
  * @param {string} prompt - The prompt to send
  * @param {object} options - { maxTokens, jsonType: "object" | "array" }
  */
 export async function generateJSON(prompt, { maxTokens = 1024, jsonType = "object" } = {}) {
-  const m = getModel();
-  if (!m) return null;
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) return null;
 
   try {
-    const result = await m.generateContent({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: {
-        maxOutputTokens: maxTokens,
-        temperature: 0.3,
+    const res = await fetch(GROQ_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
       },
+      body: JSON.stringify({
+        model: process.env.GROQ_MODEL || DEFAULT_MODEL,
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: maxTokens,
+        temperature: 0.3,
+      }),
     });
 
-    const text = result.response?.text();
+    if (!res.ok) {
+      console.error(`Groq API error: ${res.status} ${res.statusText}`);
+      return null;
+    }
+
+    const data = await res.json();
+    const text = data.choices?.[0]?.message?.content;
     if (!text) return null;
 
     // Extract JSON from response (handle markdown code blocks)
@@ -45,7 +48,7 @@ export async function generateJSON(prompt, { maxTokens = 1024, jsonType = "objec
 
     return JSON.parse(jsonMatch[0]);
   } catch (err) {
-    console.error("Gemini generation failed:", err.message);
+    console.error("Groq generation failed:", err.message);
     return null;
   }
 }
@@ -54,5 +57,5 @@ export async function generateJSON(prompt, { maxTokens = 1024, jsonType = "objec
  * Check if the LLM client is available (API key configured).
  */
 export function isLLMAvailable() {
-  return !!process.env.GEMINI_API_KEY;
+  return !!process.env.GROQ_API_KEY;
 }
