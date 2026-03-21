@@ -185,11 +185,16 @@ function TrialBanner({ daysRemaining, onUpgradeClick }) {
 }
 
 /* ─── App ─────────────────────────────────────────────────────────────────── */
+const COLLAPSE_TABS = ["ask", "interact", "draft"];
+
 export default function App() {
   const [page,            setPage]           = useState("landing");
   const [appTab,          setAppTab]         = useState("dashboard");
   const [settingsTab,     setSettingsTab]    = useState("billing");
   const [settingsContent, setSettingsContent]= useState("billing");
+  const [sidebarHovered,  setSidebarHovered] = useState(false);
+
+  const sidebarCollapsed = COLLAPSE_TABS.includes(appTab);
 
   const goSettings = (sub = "billing") => {
     setPage("settings");
@@ -227,9 +232,20 @@ export default function App() {
         onUpgradeClick={() => goSettings("billing")}
       />
 
-      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-        <AppSidebar active={appTab} onNav={setAppTab} />
-        <div style={{ flex: 1, overflow: "auto" }}>
+      <div style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative" }}>
+        <AppSidebar
+          active={appTab}
+          onNav={(id) => { setAppTab(id); setSidebarHovered(false); }}
+          collapsed={sidebarCollapsed}
+          hovered={sidebarHovered}
+          onMouseEnter={() => sidebarCollapsed && setSidebarHovered(true)}
+          onMouseLeave={() => setSidebarHovered(false)}
+        />
+        <div style={{
+          flex: 1, overflow: "auto",
+          marginLeft: sidebarCollapsed ? 56 : 0,
+          transition: "margin-left 250ms cubic-bezier(0.4, 0, 0.2, 1)",
+        }}>
           {appTab === "dashboard"
             ? <Dashboard onNav={setAppTab} />
             : appTab === "draft"
