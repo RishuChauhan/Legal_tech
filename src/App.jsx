@@ -208,17 +208,23 @@ export default function App() {
 
   if (page === "settings") {
     return (
-      <div style={{ display: "flex", width: "100vw", height: "100vh", overflow: "hidden" }}>
-        <SettingsSidebar
-          activeSub={settingsTab}
-          onBack={() => setPage("app")}
-          onNav={(id) => { setSettingsTab(id); setSettingsContent(id); }}
+      <div style={{ position: "relative", display: "flex", flexDirection: "column", width: "100vw", height: "100vh", overflow: "hidden" }}>
+        <TrialBanner
+          daysRemaining={TRIAL_DAYS_REMAINING}
+          onUpgradeClick={() => goSettings("billing")}
         />
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-          {settingsContent === "checkout"
-            ? <CheckoutPage />
-            : <BillingPage onChoose={() => setSettingsContent("checkout")} />
-          }
+        <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+          <SettingsSidebar
+            activeSub={settingsTab}
+            onBack={() => setPage("app")}
+            onNav={(id) => { setSettingsTab(id); setSettingsContent(id); }}
+          />
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            {settingsContent === "checkout"
+              ? <CheckoutPage />
+              : <BillingPage onChoose={() => setSettingsContent("checkout")} />
+            }
+          </div>
         </div>
       </div>
     );

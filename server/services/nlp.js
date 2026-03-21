@@ -168,8 +168,8 @@ export async function analyseIntent(intentText) {
 
   // ── Step 4: Rule-based post-processing (template/clause/rulebook mapping) ──
   const templates = matchTemplates(finalDocTypeId, intentText);
-  const rawClauses = recommendClauses(finalDocTypeId);
-  const rulebooks = mapRulebooks(finalDocTypeId, finalJurisdiction, finalIndustry);
+  const rawClauses = recommendClauses(finalDocTypeId, intentText);
+  const rulebooks = mapRulebooks(finalDocTypeId, finalJurisdiction, finalIndustry, intentText);
   const clauses = holisticRescore(rawClauses, templates, rulebooks);
 
   const bestTemplate = templates[0] || { id: "t1", name: "General Agreement Template", matchScore: 50 };

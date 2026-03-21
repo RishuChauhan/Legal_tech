@@ -287,7 +287,7 @@ function FallbackBanner() {
 
 function PipelineProgress({ draftState }) {
   const steps = [
-    { key: DraftState.INTENT_INPUT, label: "Intent" },
+    { key: DraftState.INTENT_INPUT, label: "Instructions" },
     { key: DraftState.ANALYSING, label: "Analysis" },
     { key: DraftState.CONFIGURING, label: "Configuration" },
     { key: DraftState.GENERATING, label: "Generation" },
@@ -350,13 +350,16 @@ function PipelineProgress({ draftState }) {
 
 function DraftIntentInput({ onSubmit, loading }) {
   const [value, setValue] = useState("");
+  const textareaRef = useRef(null);
 
-  const examples = [
-    "Draft a Vendor Agreement between a SaaS company and a marketing agency",
-    "Draft an NDA between a startup and a potential investor",
-    "Create an Employment Agreement for a senior engineer in India",
-    "Draft a Software License Agreement for a B2B product",
-  ];
+  // Auto-grow textarea
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (el) {
+      el.style.height = "auto";
+      el.style.height = Math.min(el.scrollHeight, 400) + "px";
+    }
+  }, [value]);
 
   return (
     <div style={{
@@ -366,39 +369,21 @@ function DraftIntentInput({ onSubmit, loading }) {
     }}>
       <div style={{ padding: "18px 18px 10px" }}>
         <textarea
+          ref={textareaRef}
           value={value}
           onChange={e => setValue(e.target.value)}
           onKeyDown={e => {
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && value.trim())
               onSubmit(value.trim());
           }}
-          placeholder={"Describe the legal document you want to create…\n\ne.g. Draft a Non-Disclosure Agreement between a startup and an investor."}
+          placeholder={"Write your instructions here\n\nProvide detailed instructions for your legal document — include parties, terms, jurisdiction, and any specific requirements."}
           style={{
-            width: "100%", minHeight: 100, border: "none", outline: "none",
+            width: "100%", minHeight: 180, maxHeight: 400, border: "none", outline: "none",
             resize: "none", fontSize: 14, lineHeight: 1.7, color: T.black,
             background: "transparent", fontFamily: "inherit", boxSizing: "border-box",
+            overflowY: "auto",
           }}
         />
-      </div>
-
-      {/* example pills */}
-      <div style={{ padding: "0 18px 12px", display: "flex", flexWrap: "wrap", gap: 6 }}>
-        {examples.map((ex, i) => (
-          <button
-            key={i}
-            onClick={() => setValue(ex)}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = T.black; e.currentTarget.style.color = T.black; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.color = T.textSec; }}
-            style={{
-              fontSize: 11.5, padding: "3px 10px", borderRadius: 20,
-              border: `1px solid ${T.border}`, background: T.bg,
-              color: T.textSec, cursor: "pointer", transition: "all .15s",
-              fontFamily: "inherit",
-            }}
-          >
-            {ex.length > 54 ? ex.slice(0, 54) + "…" : ex}
-          </button>
-        ))}
       </div>
 
       <div style={{
@@ -406,7 +391,7 @@ function DraftIntentInput({ onSubmit, loading }) {
         display: "flex", justifyContent: "space-between", alignItems: "center",
         background: T.bg,
       }}>
-        <span style={{ fontSize: 11.5, color: T.textLight }}>⌘ Enter to analyse</span>
+        <span style={{ fontSize: 11.5, color: T.textLight }}>⌘ Enter to submit</span>
         <button
           onClick={() => value.trim() && !loading && onSubmit(value.trim())}
           disabled={!value.trim() || loading}
@@ -525,7 +510,7 @@ function AISuggestionsPanel({ suggestions }) {
             </div>
           ))}
           <div style={{ fontSize: 11, color: T.textLight, marginTop: 6 }}>
-            Address these in the "Additional Instructions" section below for better results.
+            Address these in your drafting instructions above for better results.
           </div>
         </div>
       )}
@@ -863,21 +848,6 @@ function RulebookSelector({ selected, onChange, customRulebooks, onAddCustom }) 
   );
 }
 
-// ─── InstructionsEditor ────────────────────────────────────────────────────
-
-function InstructionsEditor({ value, onChange }) {
-  return (
-    <textarea
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      placeholder={"Add specific instructions for the AI to follow when drafting…\n\ne.g. Use Indian governing law. Favour arbitration over litigation."}
-      onFocus={e => e.target.style.borderColor = T.borderHov}
-      onBlur={e => e.target.style.borderColor = T.border}
-      style={{ width: "100%", minHeight: 90, border: `1px solid ${T.border}`, borderRadius: 10, padding: "10px 12px", fontSize: 13.5, lineHeight: 1.65, color: T.black, resize: "vertical", outline: "none", fontFamily: "inherit", boxSizing: "border-box", background: T.white }}
-    />
-  );
-}
-
 // ─── GeneratedDraftView ────────────────────────────────────────────────────
 
 function GeneratedDraftView({ draftData, onReset }) {
@@ -1124,7 +1094,6 @@ export default function DraftPage() {
   const [clauses, setClauses] = useState([]);
   const [template, setTemplate] = useState("");
   const [rulebooks, setRulebooks] = useState([]);
-  const [instructions, setInstructions] = useState("");
 
   // ── Reference file intelligence ──
   const [refFiles, setRefFiles] = useState([]);        // Array of { file, fileId, fileName, blocks, parsing }
@@ -1247,7 +1216,7 @@ export default function DraftPage() {
       clauses,
       rulebooks,
       referenceBlocks,
-      instructions,
+      instructions: intentText,
       entities: suggestions?.entities || {},
     };
 
@@ -1350,7 +1319,6 @@ export default function DraftPage() {
     setClauses([]);
     setTemplate("");
     setRulebooks([]);
-    setInstructions("");
     setRefFiles([]);
     setSelectedBlocks([]);
     setSuggestedBlockIds([]);
@@ -1443,10 +1411,10 @@ export default function DraftPage() {
           {/* ── Proactive drafting flow ── */}
           {isProactive && (
             <>
-              {/* Step 1 — Intent */}
+              {/* Step 1 — Instructions */}
               {stateAtLeast(draftState, DraftState.INTENT_INPUT) && draftState !== DraftState.COMPLETE && (
                 <div className="lex-fadein">
-                  <StepLabel n="1" label="Describe the document you want to draft" />
+                  <StepLabel n="1" label="Write your drafting instructions" />
                   <DraftIntentInput onSubmit={handleAnalyse} loading={draftState === DraftState.ANALYSING} />
                 </div>
               )}
@@ -1503,29 +1471,33 @@ export default function DraftPage() {
                         onAddCustom={label => setCustomRulebooks(prev => [...prev, label])}
                       />
                     </ConfigurationCard>
-                    <ConfigurationCard title="Reference Files" defaultOpen={false}>
-                      <ReferenceFileIntelligence
-                        files={refFiles}
-                        selectedBlocks={selectedBlocks}
-                        suggestedBlockIds={suggestedBlockIds}
-                        onUpload={handleFileUpload}
-                        onRemoveFile={handleRemoveFile}
-                        onToggleBlock={handleToggleBlock}
-                        onSelectAllBlocks={handleSelectAllBlocks}
-                        onDeselectAllBlocks={handleDeselectAllBlocks}
-                      />
-                    </ConfigurationCard>
-                    <ConfigurationCard title="Additional Instructions" defaultOpen={false}>
-                      <InstructionsEditor value={instructions} onChange={setInstructions} />
-                    </ConfigurationCard>
                   </div>
                 </div>
               )}
 
-              {/* Step 4 — Generate */}
+              {/* Step 4 — Reference Files */}
+              {suggestions && stateAtLeast(draftState, DraftState.SUGGESTIONS_READY) && draftState !== DraftState.COMPLETE && (
+                <div className="lex-fadein">
+                  <StepLabel n="4" label="Upload reference files (optional)" />
+                  <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 12, padding: "14px 18px" }}>
+                    <ReferenceFileIntelligence
+                      files={refFiles}
+                      selectedBlocks={selectedBlocks}
+                      suggestedBlockIds={suggestedBlockIds}
+                      onUpload={handleFileUpload}
+                      onRemoveFile={handleRemoveFile}
+                      onToggleBlock={handleToggleBlock}
+                      onSelectAllBlocks={handleSelectAllBlocks}
+                      onDeselectAllBlocks={handleDeselectAllBlocks}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Step 5 — Generate */}
               {suggestions && stateAtLeast(draftState, DraftState.SUGGESTIONS_READY) && draftState !== DraftState.COMPLETE && draftState !== DraftState.ERROR && (
                 <div className="lex-fadein">
-                  <StepLabel n="4" label="Generate your draft" />
+                  <StepLabel n="5" label="Generate your draft" />
                   <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 10, padding: "12px 16px", marginBottom: 14, display: "flex", flexWrap: "wrap", gap: 16 }}>
                     {[
                       { label: "Template",   value: template || "None" },

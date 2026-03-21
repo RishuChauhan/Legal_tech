@@ -92,44 +92,64 @@ export const TEMPLATES = [
 
 export const CLAUSES = [
   { id: "c1",  label: "Confidentiality",              weight: 95,
+    keywords: ["confidential", "secrecy", "secret", "non-disclosure", "proprietary information", "nda"],
     applicableTo: ["vendor-agreement", "nda", "mutual-nda", "employment-agreement", "consulting-agreement", "contractor-agreement", "software-license", "partnership-agreement", "franchise-agreement", "distribution-agreement", "merger-acquisition", "msa", "licensing-agreement"] },
   { id: "c2",  label: "Indemnity",                    weight: 90,
+    keywords: ["indemnity", "indemnify", "indemnification", "hold harmless"],
     applicableTo: ["vendor-agreement", "consulting-agreement", "contractor-agreement", "software-license", "lease-agreement", "distribution-agreement", "franchise-agreement", "msa", "licensing-agreement"] },
   { id: "c3",  label: "Limitation of Liability",      weight: 88,
+    keywords: ["limitation of liability", "limit liability", "liability cap", "cap on damages", "liability limit"],
     applicableTo: ["vendor-agreement", "software-license", "consulting-agreement", "contractor-agreement", "terms-of-service", "distribution-agreement", "msa", "licensing-agreement"] },
   { id: "c4",  label: "Arbitration",                  weight: 82,
+    keywords: ["arbitration", "arbitrate", "arbitral", "arbitrator"],
     applicableTo: ["vendor-agreement", "shareholder-agreement", "partnership-agreement", "franchise-agreement", "distribution-agreement", "lease-agreement"] },
   { id: "c5",  label: "Governing Law",                weight: 85,
+    keywords: ["governing law", "applicable law", "choice of law", "jurisdiction"],
     applicableTo: ["vendor-agreement", "nda", "mutual-nda", "employment-agreement", "consulting-agreement", "contractor-agreement", "software-license", "shareholder-agreement", "partnership-agreement", "lease-agreement", "loan-agreement", "franchise-agreement", "distribution-agreement", "msa", "affiliate-agreement", "licensing-agreement", "purchase-order", "bill-of-sale", "terms-of-service", "privacy-policy"] },
   { id: "c6",  label: "Payment Terms",                weight: 92,
+    keywords: ["payment", "compensation", "fee", "pricing", "invoice", "billing", "remuneration"],
     applicableTo: ["vendor-agreement", "consulting-agreement", "contractor-agreement", "lease-agreement", "loan-agreement", "franchise-agreement", "distribution-agreement", "msa", "affiliate-agreement", "licensing-agreement", "purchase-order"] },
   { id: "c7",  label: "Intellectual Property",        weight: 87,
+    keywords: ["intellectual property", "ip rights", "patent", "trademark", "copyright", "trade secret", "ip ownership"],
     applicableTo: ["vendor-agreement", "employment-agreement", "consulting-agreement", "contractor-agreement", "software-license", "partnership-agreement", "franchise-agreement", "msa", "affiliate-agreement", "licensing-agreement"] },
   { id: "c8",  label: "Force Majeure",                weight: 75,
+    keywords: ["force majeure", "act of god", "unforeseen circumstances", "natural disaster"],
     applicableTo: ["vendor-agreement", "lease-agreement", "distribution-agreement", "franchise-agreement", "consulting-agreement", "contractor-agreement", "msa"] },
   { id: "c9",  label: "Non-Compete",                  weight: 80,
+    keywords: ["non-compete", "non compete", "noncompete", "restrictive covenant", "competition restriction"],
     applicableTo: ["employment-agreement", "partnership-agreement", "franchise-agreement", "consulting-agreement", "contractor-agreement", "merger-acquisition", "affiliate-agreement"] },
   { id: "c10", label: "Representations & Warranties", weight: 86,
+    keywords: ["representation", "warranty", "warranties", "represent and warrant", "guarantees"],
     applicableTo: ["vendor-agreement", "shareholder-agreement", "merger-acquisition", "loan-agreement", "franchise-agreement", "bill-of-sale", "purchase-order", "licensing-agreement"] },
   { id: "c11", label: "Termination",                  weight: 93,
+    keywords: ["termination", "terminate", "cancellation", "end of agreement", "expiry"],
     applicableTo: ["vendor-agreement", "nda", "mutual-nda", "employment-agreement", "consulting-agreement", "contractor-agreement", "software-license", "lease-agreement", "partnership-agreement", "franchise-agreement", "distribution-agreement", "msa", "affiliate-agreement", "licensing-agreement"] },
   { id: "c12", label: "Assignment",                   weight: 70,
+    keywords: ["assignment", "assign", "transfer rights", "assignability"],
     applicableTo: ["vendor-agreement", "lease-agreement", "software-license", "distribution-agreement", "msa"] },
   { id: "c13", label: "Entire Agreement",             weight: 65,
+    keywords: ["entire agreement", "whole agreement", "integration clause", "merger clause"],
     applicableTo: ["vendor-agreement", "nda", "mutual-nda", "employment-agreement", "consulting-agreement", "contractor-agreement", "software-license", "shareholder-agreement", "partnership-agreement", "bill-of-sale"] },
   { id: "c14", label: "Severability",                 weight: 60,
+    keywords: ["severability", "severable", "invalid provision"],
     applicableTo: ["vendor-agreement", "employment-agreement", "software-license", "terms-of-service", "privacy-policy"] },
   { id: "c15", label: "Notice",                       weight: 68,
+    keywords: ["notice", "notification", "written notice", "notice period"],
     applicableTo: ["vendor-agreement", "lease-agreement", "shareholder-agreement", "partnership-agreement", "loan-agreement", "msa"] },
   { id: "c16", label: "Waiver",                       weight: 55,
+    keywords: ["waiver", "waive", "forgo rights"],
     applicableTo: ["vendor-agreement", "employment-agreement", "software-license"] },
   { id: "c17", label: "Data Protection",              weight: 89,
+    keywords: ["data protection", "personal data", "privacy", "gdpr", "data processing", "data security"],
     applicableTo: ["software-license", "employment-agreement", "vendor-agreement", "terms-of-service", "privacy-policy", "msa", "contractor-agreement"] },
   { id: "c18", label: "Non-Solicitation",             weight: 78,
+    keywords: ["non-solicitation", "non solicitation", "nonsolicitation", "no poach", "employee solicitation"],
     applicableTo: ["employment-agreement", "consulting-agreement", "contractor-agreement", "nda", "mutual-nda", "merger-acquisition"] },
   { id: "c19", label: "Dispute Resolution",           weight: 84,
+    keywords: ["dispute resolution", "dispute", "mediation", "litigation", "court proceedings"],
     applicableTo: ["shareholder-agreement", "partnership-agreement", "franchise-agreement", "loan-agreement", "merger-acquisition", "msa", "licensing-agreement"] },
   { id: "c20", label: "Insurance",                    weight: 72,
+    keywords: ["insurance", "coverage", "policy", "insured", "liability insurance"],
     applicableTo: ["vendor-agreement", "consulting-agreement", "contractor-agreement", "lease-agreement", "franchise-agreement"] },
 ];
 
@@ -146,14 +166,14 @@ export const CLAUSE_RELATIONSHIPS = [
 // ─── Rulebooks with jurisdiction/industry mapping + clause mandates ──────────
 
 export const RULEBOOKS = [
-  { id: "r1", name: "Corporate Contract Policy",       jurisdictions: ["*"],     industries: ["*"],          docTypes: ["vendor-agreement", "consulting-agreement", "contractor-agreement", "distribution-agreement", "msa"],  mandatoryClauses: [] },
-  { id: "r2", name: "Standard Legal Guidelines",       jurisdictions: ["*"],     industries: ["*"],          docTypes: ["*"],  mandatoryClauses: [] },
-  { id: "r3", name: "GDPR Compliance Rules",           jurisdictions: ["eu", "uk", "germany", "france"],  industries: ["*"],  docTypes: ["privacy-policy", "terms-of-service", "software-license", "employment-agreement", "msa"],  mandatoryClauses: ["c17"] },
-  { id: "r4", name: "Arbitration-First Policy",        jurisdictions: ["*"],     industries: ["*"],          docTypes: ["vendor-agreement", "shareholder-agreement", "partnership-agreement", "franchise-agreement"],  mandatoryClauses: ["c4"] },
-  { id: "r5", name: "Indian Contract Act Compliance",  jurisdictions: ["india"], industries: ["*"],          docTypes: ["*"],  mandatoryClauses: [] },
-  { id: "r6", name: "ISO Legal Standards",             jurisdictions: ["*"],     industries: ["technology", "manufacturing", "healthcare"], docTypes: ["vendor-agreement", "software-license", "msa"],  mandatoryClauses: [] },
-  { id: "r7", name: "US Employment Law Compliance",    jurisdictions: ["us", "usa", "united states"],  industries: ["*"],  docTypes: ["employment-agreement", "contractor-agreement"],  mandatoryClauses: ["c9", "c18"] },
-  { id: "r8", name: "HIPAA Compliance Rules",          jurisdictions: ["us", "usa"],                   industries: ["healthcare", "health", "medical"], docTypes: ["vendor-agreement", "software-license", "privacy-policy", "msa"],  mandatoryClauses: ["c1", "c17"] },
+  { id: "r1", name: "Corporate Contract Policy",       keywords: ["corporate policy", "company policy", "internal policy"],  jurisdictions: ["*"],     industries: ["*"],          docTypes: ["vendor-agreement", "consulting-agreement", "contractor-agreement", "distribution-agreement", "msa"],  mandatoryClauses: [] },
+  { id: "r2", name: "Standard Legal Guidelines",       keywords: ["standard guidelines", "legal standards", "best practices"],  jurisdictions: ["*"],     industries: ["*"],          docTypes: ["*"],  mandatoryClauses: [] },
+  { id: "r3", name: "GDPR Compliance Rules",           keywords: ["gdpr", "data protection regulation", "european privacy", "gdpr compliant", "gdpr compliance"],  jurisdictions: ["eu", "uk", "germany", "france"],  industries: ["*"],  docTypes: ["privacy-policy", "terms-of-service", "software-license", "employment-agreement", "msa"],  mandatoryClauses: ["c17"] },
+  { id: "r4", name: "Arbitration-First Policy",        keywords: ["arbitration first", "arbitration policy", "mandatory arbitration"],  jurisdictions: ["*"],     industries: ["*"],          docTypes: ["vendor-agreement", "shareholder-agreement", "partnership-agreement", "franchise-agreement"],  mandatoryClauses: ["c4"] },
+  { id: "r5", name: "Indian Contract Act Compliance",  keywords: ["indian contract act", "indian law", "india compliance"],  jurisdictions: ["india"], industries: ["*"],          docTypes: ["*"],  mandatoryClauses: [] },
+  { id: "r6", name: "ISO Legal Standards",             keywords: ["iso", "iso standard", "iso compliance", "iso certified"],  jurisdictions: ["*"],     industries: ["technology", "manufacturing", "healthcare"], docTypes: ["vendor-agreement", "software-license", "msa"],  mandatoryClauses: [] },
+  { id: "r7", name: "US Employment Law Compliance",    keywords: ["us employment law", "american labor law", "flsa", "at-will employment"],  jurisdictions: ["us", "usa", "united states"],  industries: ["*"],  docTypes: ["employment-agreement", "contractor-agreement"],  mandatoryClauses: ["c9", "c18"] },
+  { id: "r8", name: "HIPAA Compliance Rules",          keywords: ["hipaa", "health data", "patient privacy", "hipaa compliant", "hipaa compliance", "phi"],  jurisdictions: ["us", "usa"],                   industries: ["healthcare", "health", "medical"], docTypes: ["vendor-agreement", "software-license", "privacy-policy", "msa"],  mandatoryClauses: ["c1", "c17"] },
 ];
 
 // ─── Jurisdiction keywords ─────────────────────────────────────────────────
@@ -191,17 +211,24 @@ const INDUSTRY_KEYWORDS = {
 
 /**
  * Detect document type from intent text using keyword scoring with word boundaries.
+ * Primary keywords (first in list) score higher for better discrimination.
  * Returns sorted array of { id, label, score }.
  */
 export function detectDocumentType(intentText) {
   const lower = intentText.toLowerCase();
   const scores = DOCUMENT_TYPES.map(dt => {
     let score = 0;
-    for (const kw of dt.keywords) {
+    dt.keywords.forEach((kw, i) => {
       if (kwMatch(lower, kw)) {
-        score += kw.includes(" ") ? 15 : 10;
+        if (kw.includes(" ")) {
+          score += 18; // Multi-word phrases are highly discriminative
+        } else if (i === 0) {
+          score += 15; // Primary keyword (most discriminative)
+        } else {
+          score += 8;  // Supporting keywords
+        }
       }
-    }
+    });
     return { id: dt.id, label: dt.label, score };
   });
   return scores.filter(s => s.score > 0).sort((a, b) => b.score - a.score);
@@ -249,15 +276,18 @@ export function detectIndustry(intentText) {
 
 /**
  * Match templates to a document type. Returns sorted array of { id, name, matchScore }.
+ * Template keywords now carry more weight to be competitive with docType matching.
  */
 export function matchTemplates(documentTypeId, intentText) {
   const lower = intentText.toLowerCase();
   return TEMPLATES.map(t => {
     let score = 0;
     if (t.docTypes.includes(documentTypeId)) score += 60;
-    for (const kw of t.keywords) {
-      if (kwMatch(lower, kw)) score += 10;
-    }
+    t.keywords.forEach((kw, i) => {
+      if (kwMatch(lower, kw)) {
+        score += i === 0 ? 20 : 12; // Primary keyword scores higher
+      }
+    });
     return { id: t.id, name: t.name, matchScore: Math.min(score, 100) };
   })
     .filter(t => t.matchScore > 0)
@@ -266,26 +296,43 @@ export function matchTemplates(documentTypeId, intentText) {
 
 /**
  * Recommend clauses for a document type. Returns array of { id, label, relevanceScore, selected }.
+ * Now intent-aware: scans intent text for clause-related keywords to boost relevance.
  */
-export function recommendClauses(documentTypeId) {
+export function recommendClauses(documentTypeId, intentText) {
+  const lower = (intentText || "").toLowerCase();
   return CLAUSES.map(c => {
     const isApplicable = c.applicableTo.includes(documentTypeId);
-    const relevanceScore = isApplicable ? c.weight : Math.floor(c.weight * 0.3);
+    let relevanceScore = isApplicable ? c.weight : Math.floor(c.weight * 0.3);
+    let intentBoosted = false;
+
+    // Boost clauses whose keywords appear in the intent text
+    if (c.keywords && lower) {
+      for (const kw of c.keywords) {
+        if (kwMatch(lower, kw)) {
+          relevanceScore = Math.min(relevanceScore + 15, 100);
+          intentBoosted = true;
+        }
+      }
+    }
+
     return {
       id: c.id,
       label: c.label,
       relevanceScore,
-      selected: isApplicable && c.weight >= 80,
+      // Auto-select if applicable+high-weight OR if user explicitly mentioned it
+      selected: (isApplicable && c.weight >= 80) || intentBoosted,
     };
   })
     .sort((a, b) => b.relevanceScore - a.relevanceScore);
 }
 
 /**
- * Map rulebooks based on jurisdiction, industry, and document type.
+ * Map rulebooks based on jurisdiction, industry, document type, and intent text.
+ * Now intent-aware: scans for rulebook-specific keywords (e.g. "GDPR", "HIPAA").
  * Returns array of { id, name, matchScore, mandatoryClauses }.
  */
-export function mapRulebooks(documentTypeId, jurisdiction, industry) {
+export function mapRulebooks(documentTypeId, jurisdiction, industry, intentText) {
+  const lower = (intentText || "").toLowerCase();
   return RULEBOOKS.map(r => {
     let score = 0;
     if (r.docTypes.includes("*") || r.docTypes.includes(documentTypeId)) score += 30;
@@ -293,6 +340,17 @@ export function mapRulebooks(documentTypeId, jurisdiction, industry) {
     else if (jurisdiction && r.jurisdictions.includes(jurisdiction)) score += 40;
     if (r.industries.includes("*")) score += 5;
     else if (industry && r.industries.includes(industry)) score += 30;
+
+    // Boost rulebooks whose keywords appear in the intent text
+    if (r.keywords && lower) {
+      for (const kw of r.keywords) {
+        if (kwMatch(lower, kw)) {
+          score += 25;
+          break; // One keyword match is enough for a strong boost
+        }
+      }
+    }
+
     return { id: r.id, name: r.name, matchScore: Math.min(score, 100), mandatoryClauses: r.mandatoryClauses || [] };
   })
     .filter(r => r.matchScore >= 30)

@@ -39,13 +39,13 @@ export default function AppSidebar({ active, onNav, collapsed = false, hovered =
       }}
     >
       <div style={{
-        padding: expanded ? "18px 18px 14px" : "18px 15px 14px",
+        padding: expanded ? "18px 18px 14px" : "18px 4px 14px",
         transition: "padding 250ms cubic-bezier(0.4, 0, 0.2, 1)",
       }}>
         <Logo collapsed={!expanded} />
       </div>
 
-      <nav style={{ flex: 1, padding: "4px 8px" }}>
+      <nav style={{ flex: 1, padding: expanded ? "4px 8px" : "4px 4px", transition: "padding 250ms cubic-bezier(0.4, 0, 0.2, 1)" }}>
         {navItems.map(({ id, label, Icon, hasChevron }) => {
           const isActive = active === id;
           return (
@@ -78,12 +78,12 @@ export default function AppSidebar({ active, onNav, collapsed = false, hovered =
                 <Icon />
               </span>
               <span style={{
-                flex: 1,
+                flex: expanded ? 1 : 0,
                 opacity: expanded ? 1 : 0,
                 width: expanded ? "auto" : 0,
                 overflow: "hidden",
                 whiteSpace: "nowrap",
-                transition: "opacity 250ms cubic-bezier(0.4, 0, 0.2, 1)",
+                transition: "opacity 250ms cubic-bezier(0.4, 0, 0.2, 1), flex 250ms cubic-bezier(0.4, 0, 0.2, 1)",
               }}>
                 {label}
               </span>
@@ -110,11 +110,11 @@ export default function AppSidebar({ active, onNav, collapsed = false, hovered =
           <UserIcon />
         </div>
         <div style={{
-          flex: 1, minWidth: 0,
+          flex: expanded ? 1 : 0, minWidth: 0,
           opacity: expanded ? 1 : 0,
           width: expanded ? "auto" : 0,
           overflow: "hidden",
-          transition: "opacity 250ms cubic-bezier(0.4, 0, 0.2, 1)",
+          transition: "opacity 250ms cubic-bezier(0.4, 0, 0.2, 1), flex 250ms cubic-bezier(0.4, 0, 0.2, 1)",
         }}>
           <div style={{ fontSize: 13, fontWeight: 500, color: "#111" }}>Rishu Chauhan</div>
           <div style={{ fontSize: 11, color: "#999", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>

@@ -11,8 +11,8 @@ router.post("/analyse", async (req, res) => {
     if (!intent || typeof intent !== "string" || intent.trim().length === 0) {
       return res.status(400).json({ error: "Intent text is required" });
     }
-    if (intent.length > 2000) {
-      return res.status(400).json({ error: "Intent text must be under 2000 characters" });
+    if (intent.length > 5000) {
+      return res.status(400).json({ error: "Intent text must be under 5000 characters" });
     }
     const result = await analyseIntent(intent.trim());
     res.json(result);
