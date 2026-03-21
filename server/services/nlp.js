@@ -10,6 +10,7 @@ import {
   matchTemplates,
   recommendClauses,
   mapRulebooks,
+  holisticRescore,
 } from "./templateRegistry.js";
 
 // ─── Rule-based party extraction ───────────────────────────────────────────
@@ -167,8 +168,9 @@ export async function analyseIntent(intentText) {
 
   // ── Step 4: Rule-based post-processing (template/clause/rulebook mapping) ──
   const templates = matchTemplates(finalDocTypeId, intentText);
-  const clauses = recommendClauses(finalDocTypeId);
+  const rawClauses = recommendClauses(finalDocTypeId);
   const rulebooks = mapRulebooks(finalDocTypeId, finalJurisdiction, finalIndustry);
+  const clauses = holisticRescore(rawClauses, templates, rulebooks);
 
   const bestTemplate = templates[0] || { id: "t1", name: "General Agreement Template", matchScore: 50 };
   const alternativeTemplates = templates.slice(1, 4);

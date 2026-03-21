@@ -37,18 +37,25 @@ const DEFAULT_CLAUSES = [
   "Confidentiality", "Indemnity", "Limitation of Liability", "Arbitration",
   "Governing Law", "Payment Terms", "Intellectual Property", "Force Majeure",
   "Non-Compete", "Representations & Warranties", "Termination", "Assignment",
-  "Entire Agreement", "Severability", "Notice", "Waiver",
+  "Entire Agreement", "Severability", "Notice", "Waiver", "Data Protection",
+  "Non-Solicitation", "Dispute Resolution", "Insurance",
 ];
 
 const DEFAULT_TEMPLATES = [
   "Vendor Service Agreement", "Non-Disclosure Agreement", "Employment Agreement",
   "Shareholder Agreement", "Lease Agreement", "Consulting Agreement",
-  "Software License Agreement", "Partnership Agreement",
+  "Software License Agreement", "Partnership Agreement", "Loan Agreement",
+  "Franchise Agreement", "Distribution Agreement", "Terms of Service",
+  "Privacy Policy", "Purchase Order", "Mutual Confidentiality Agreement",
+  "Independent Contractor Agreement", "Master Service Agreement",
+  "Affiliate/Referral Agreement", "General Licensing Agreement",
+  "Bill of Sale / Asset Purchase",
 ];
 
 const DEFAULT_RULEBOOKS = [
   "Corporate Contract Policy", "Standard Legal Guidelines", "GDPR Compliance Rules",
   "Arbitration-First Policy", "Indian Contract Act Compliance", "ISO Legal Standards",
+  "US Employment Law Compliance", "HIPAA Compliance Rules",
 ];
 
 // ─── Design tokens ─────────────────────────────────────────────────────────
@@ -528,19 +535,37 @@ function AISuggestionsPanel({ suggestions }) {
 
 // ─── ClauseSelector ────────────────────────────────────────────────────────
 
-function ClauseSelector({ clauses, onChange, customClauses, onAddCustom }) {
-  const [q, setQ] = useState("");
-  const selected = clauses.filter(c => c.selected).map(c => c.label);
-  const allLabels = [...new Set([...DEFAULT_CLAUSES, ...customClauses, ...clauses.map(c => c.label)])];
-  const filtered = allLabels.filter(l => l.toLowerCase().includes(q.toLowerCase()));
+// ─── Lock icon for required items ──────────────────────────────────────────
+const LockIco = () => (
+  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" opacity="0.5">
+    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+  </svg>
+);
 
-  const toggle = (label) => {
+function ClauseSelector({ clauses, onChange, customClauses, onAddCustom }) {
+  const [addPanelOpen, setAddPanelOpen] = useState(false);
+  const [q, setQ] = useState("");
+
+  const selectedClauses = clauses.filter(c => c.selected);
+  const unselectedClauses = clauses.filter(c => !c.selected);
+
+  // All possible labels for the add panel
+  const allLabels = [...new Set([...DEFAULT_CLAUSES, ...customClauses, ...clauses.map(c => c.label)])];
+  const selectedLabels = new Set(selectedClauses.map(c => c.label));
+  const availableLabels = allLabels.filter(l => !selectedLabels.has(l));
+  const filteredAvailable = availableLabels.filter(l => l.toLowerCase().includes(q.toLowerCase()));
+
+  const addClause = (label) => {
     const existing = clauses.find(c => c.label === label);
     if (existing) {
-      onChange(clauses.map(c => c.label === label ? { ...c, selected: !c.selected } : c));
+      onChange(clauses.map(c => c.label === label ? { ...c, selected: true } : c));
     } else {
       onChange([...clauses, { id: `cx-${Date.now()}`, label, selected: true }]);
     }
+  };
+
+  const removeClause = (label) => {
+    onChange(clauses.map(c => c.label === label ? { ...c, selected: false } : c));
   };
 
   const handleAddCustom = (label) => {
@@ -551,43 +576,116 @@ function ClauseSelector({ clauses, onChange, customClauses, onAddCustom }) {
 
   return (
     <div>
-      <SearchInput value={q} onChange={setQ} placeholder="Search clauses…" />
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginTop: 10 }}>
-        {filtered.map(label => {
-          const on = selected.includes(label);
-          const isCustom = customClauses.includes(label) && !DEFAULT_CLAUSES.includes(label);
+      {/* Zone 1: Selected clauses as chips with × */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 7, minHeight: 28 }}>
+        {selectedClauses.length === 0 && (
+          <span style={{ fontSize: 12.5, color: T.textMuted, padding: "5px 0" }}>No clauses selected</span>
+        )}
+        {selectedClauses.map((c, i) => {
+          const isMandated = c.mandatedBy?.length > 0;
+          const isRequired = c.source === "template-required";
+          const hasWarning = c.warnings?.length > 0;
           return (
-            <button
-              key={label}
-              onClick={() => toggle(label)}
-              onMouseEnter={e => { if (!on) { e.currentTarget.style.borderColor = T.borderHov; e.currentTarget.style.color = T.black; } }}
-              onMouseLeave={e => { if (!on) { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.color = T.textSec; } }}
+            <span
+              key={c.label}
+              className="lex-popin"
               style={{
-                display: "flex", alignItems: "center", gap: 5,
-                padding: "5px 11px", borderRadius: 20, fontSize: 12.5, fontWeight: 500,
-                border: `1px solid ${on ? T.black : T.border}`,
-                background: on ? T.black : T.white,
-                color: on ? "white" : T.textSec,
-                cursor: "pointer", transition: "all .15s", fontFamily: "inherit",
+                display: "inline-flex", alignItems: "center", gap: 5,
+                padding: "5px 8px 5px 11px", borderRadius: 20, fontSize: 12.5, fontWeight: 500,
+                background: T.black, color: "white",
+                border: `1px solid ${hasWarning ? "#f59e0b" : T.black}`,
+                animationDelay: `${i * 50}ms`,
+                position: "relative",
               }}
+              title={[
+                isRequired ? "Required by template" : "",
+                isMandated ? `Mandated by: ${c.mandatedBy.join(", ")}` : "",
+                hasWarning ? c.warnings.join("; ") : "",
+              ].filter(Boolean).join(" · ") || undefined}
             >
-              {on && <CheckIco />}
-              {label}
-              {isCustom && !on && (
-                <span style={{ fontSize: 9.5, fontWeight: 700, padding: "0px 4px", borderRadius: 4, background: "#fefce8", border: "1px solid #fde68a", color: "#92400e", marginLeft: 2 }}>
-                  Custom
+              {isRequired && <LockIco />}
+              {c.label}
+              {isMandated && (
+                <span style={{ fontSize: 9, fontWeight: 700, padding: "0 4px", borderRadius: 4, background: "rgba(255,255,255,.2)", color: "rgba(255,255,255,.8)" }}>
+                  {c.mandatedBy[0].split(" ")[0]}
                 </span>
               )}
-            </button>
+              {hasWarning && (
+                <span style={{ fontSize: 9, fontWeight: 700, padding: "0 4px", borderRadius: 4, background: "#f59e0b", color: "#fff" }}>⚠</span>
+              )}
+              <button
+                onClick={(e) => { e.stopPropagation(); removeClause(c.label); }}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,.6)", padding: 0, display: "flex", lineHeight: 1 }}
+                onMouseEnter={e => e.currentTarget.style.color = "white"}
+                onMouseLeave={e => e.currentTarget.style.color = "rgba(255,255,255,.6)"}
+              >
+                <XIco size={10} />
+              </button>
+            </span>
           );
         })}
       </div>
-      {selected.length > 0 && (
-        <div style={{ marginTop: 8, fontSize: 12, color: T.textMuted }}>
-          {selected.length} clause{selected.length !== 1 ? "s" : ""} selected
+
+      {selectedClauses.length > 0 && (
+        <div style={{ marginTop: 6, fontSize: 12, color: T.textMuted }}>
+          {selectedClauses.length} clause{selectedClauses.length !== 1 ? "s" : ""} selected
         </div>
       )}
-      <AddCustomRow placeholder="Add a clause from your company library…" onAdd={handleAddCustom} />
+
+      {/* Zone 2: Add more button + expandable search panel */}
+      <div style={{ marginTop: 10 }}>
+        <button
+          onClick={() => { setAddPanelOpen(o => !o); setQ(""); }}
+          onMouseEnter={e => e.currentTarget.style.borderColor = T.borderHov}
+          onMouseLeave={e => e.currentTarget.style.borderColor = T.border}
+          style={{
+            display: "flex", alignItems: "center", gap: 5,
+            padding: "6px 13px", borderRadius: 20, fontSize: 12.5, fontWeight: 500,
+            border: `1px solid ${T.border}`, background: T.white, color: T.textSec,
+            cursor: "pointer", transition: "all .15s", fontFamily: "inherit",
+          }}
+        >
+          <PlusIco /> Add clause
+        </button>
+
+        {addPanelOpen && (
+          <div style={{
+            marginTop: 8, padding: "12px", background: T.bg,
+            border: `1px solid ${T.border}`, borderRadius: 10,
+            animation: "lexSlideDown .25s ease forwards",
+          }}>
+            <SearchInput value={q} onChange={setQ} placeholder="Search available clauses…" />
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10, maxHeight: 180, overflowY: "auto" }}>
+              {filteredAvailable.map(label => {
+                const clauseData = unselectedClauses.find(c => c.label === label);
+                return (
+                  <button
+                    key={label}
+                    onClick={() => addClause(label)}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = T.black; e.currentTarget.style.color = T.black; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.color = T.textSec; }}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 5,
+                      padding: "5px 11px", borderRadius: 20, fontSize: 12.5, fontWeight: 500,
+                      border: `1px solid ${T.border}`, background: T.white, color: T.textSec,
+                      cursor: "pointer", transition: "all .15s", fontFamily: "inherit",
+                    }}
+                  >
+                    <PlusIco /> {label}
+                    {clauseData?.relevanceScore && (
+                      <span style={{ fontSize: 10, color: T.textLight }}>{clauseData.relevanceScore}%</span>
+                    )}
+                  </button>
+                );
+              })}
+              {filteredAvailable.length === 0 && (
+                <span style={{ fontSize: 12, color: T.textMuted, padding: "4px 0" }}>No matching clauses</span>
+              )}
+            </div>
+            <AddCustomRow placeholder="Add a custom clause…" onAdd={handleAddCustom} />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -595,9 +693,10 @@ function ClauseSelector({ clauses, onChange, customClauses, onAddCustom }) {
 // ─── TemplateSelector ──────────────────────────────────────────────────────
 
 function TemplateSelector({ selected, onChange, customTemplates, onAddCustom }) {
+  const [changePanelOpen, setChangePanelOpen] = useState(false);
   const [q, setQ] = useState("");
   const all = [...new Set([...DEFAULT_TEMPLATES, ...customTemplates])];
-  const filtered = all.filter(t => t.toLowerCase().includes(q.toLowerCase()));
+  const alternatives = all.filter(t => t !== selected && t.toLowerCase().includes(q.toLowerCase()));
 
   const handleAddCustom = (label) => {
     if (all.includes(label)) return;
@@ -607,37 +706,61 @@ function TemplateSelector({ selected, onChange, customTemplates, onAddCustom }) 
 
   return (
     <div>
-      <SearchInput value={q} onChange={setQ} placeholder="Search templates…" />
-      <div style={{ display: "flex", flexDirection: "column", gap: 5, marginTop: 10 }}>
-        {filtered.map(t => {
-          const on = selected === t;
-          const isCustom = customTemplates.includes(t) && !DEFAULT_TEMPLATES.includes(t);
-          return (
-            <label
-              key={t}
-              style={{
-                display: "flex", alignItems: "center", gap: 10,
-                padding: "9px 12px", borderRadius: 8, cursor: "pointer",
-                border: `1px solid ${on ? T.black : T.border}`,
-                background: on ? T.activeBg : T.white,
-                transition: "all .15s",
-              }}
-            >
-              <div style={{
-                width: 16, height: 16, borderRadius: "50%", flexShrink: 0,
-                border: `2px solid ${on ? T.black : T.borderHov}`,
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}>
-                {on && <div style={{ width: 7, height: 7, borderRadius: "50%", background: T.black }} />}
-              </div>
-              <span style={{ flex: 1, fontSize: 13, color: T.black, fontWeight: on ? 600 : 400 }}>{t}</span>
-              <LibraryBadge custom={isCustom} />
-              <input type="radio" checked={on} onChange={() => onChange(t)} style={{ display: "none" }} />
-            </label>
-          );
-        })}
-      </div>
-      <AddCustomRow placeholder="Add a template from your company library…" onAdd={handleAddCustom} />
+      {/* Zone 1: Current template */}
+      {selected ? (
+        <div className="lex-popin" style={{
+          display: "flex", alignItems: "center", gap: 10,
+          padding: "10px 14px", borderRadius: 10,
+          border: `1px solid ${T.black}`, background: T.activeBg,
+        }}>
+          <div style={{ width: 16, height: 16, borderRadius: "50%", flexShrink: 0, border: `2px solid ${T.black}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 7, height: 7, borderRadius: "50%", background: T.black }} />
+          </div>
+          <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: T.black }}>{selected}</span>
+          <button
+            onClick={() => { setChangePanelOpen(o => !o); setQ(""); }}
+            style={{ fontSize: 12, color: T.textSec, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textDecoration: "underline" }}
+          >
+            Change
+          </button>
+        </div>
+      ) : (
+        <span style={{ fontSize: 12.5, color: T.textMuted }}>No template selected</span>
+      )}
+
+      {/* Zone 2: Change panel */}
+      {changePanelOpen && (
+        <div style={{
+          marginTop: 8, padding: "12px", background: T.bg,
+          border: `1px solid ${T.border}`, borderRadius: 10,
+          animation: "lexSlideDown .25s ease forwards",
+        }}>
+          <SearchInput value={q} onChange={setQ} placeholder="Search templates…" />
+          <div style={{ display: "flex", flexDirection: "column", gap: 5, marginTop: 10, maxHeight: 240, overflowY: "auto" }}>
+            {alternatives.map(t => {
+              const isCustom = customTemplates.includes(t) && !DEFAULT_TEMPLATES.includes(t);
+              return (
+                <label
+                  key={t}
+                  onClick={() => { onChange(t); setChangePanelOpen(false); }}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 10,
+                    padding: "9px 12px", borderRadius: 8, cursor: "pointer",
+                    border: `1px solid ${T.border}`, background: T.white,
+                    transition: "all .15s",
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = T.black}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = T.border}
+                >
+                  <span style={{ flex: 1, fontSize: 13, color: T.black }}>{t}</span>
+                  <LibraryBadge custom={isCustom} />
+                </label>
+              );
+            })}
+          </div>
+          <AddCustomRow placeholder="Add a custom template…" onAdd={handleAddCustom} />
+        </div>
+      )}
     </div>
   );
 }
@@ -645,9 +768,10 @@ function TemplateSelector({ selected, onChange, customTemplates, onAddCustom }) 
 // ─── RulebookSelector ──────────────────────────────────────────────────────
 
 function RulebookSelector({ selected, onChange, customRulebooks, onAddCustom }) {
+  const [addPanelOpen, setAddPanelOpen] = useState(false);
   const [q, setQ] = useState("");
   const all = [...new Set([...DEFAULT_RULEBOOKS, ...customRulebooks])];
-  const filtered = all.filter(r => r.toLowerCase().includes(q.toLowerCase()));
+  const available = all.filter(r => !selected.includes(r) && r.toLowerCase().includes(q.toLowerCase()));
 
   const handleAddCustom = (label) => {
     if (all.includes(label)) return;
@@ -657,38 +781,84 @@ function RulebookSelector({ selected, onChange, customRulebooks, onAddCustom }) 
 
   return (
     <div>
-      <SearchInput value={q} onChange={setQ} placeholder="Search rulebooks…" />
-      <div style={{ display: "flex", flexDirection: "column", gap: 5, marginTop: 10 }}>
-        {filtered.map(r => {
-          const on = selected.includes(r);
-          const isCustom = customRulebooks.includes(r) && !DEFAULT_RULEBOOKS.includes(r);
-          return (
-            <label
-              key={r}
-              onClick={() => onChange(on ? selected.filter(x => x !== r) : [...selected, r])}
-              style={{
-                display: "flex", alignItems: "center", gap: 10,
-                padding: "9px 12px", borderRadius: 8, cursor: "pointer",
-                border: `1px solid ${on ? T.black : T.border}`,
-                background: on ? T.activeBg : T.white,
-                transition: "all .15s",
-              }}
+      {/* Zone 1: Selected rulebooks as chips with × */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 7, minHeight: 28 }}>
+        {selected.length === 0 && (
+          <span style={{ fontSize: 12.5, color: T.textMuted, padding: "5px 0" }}>No rulebooks selected</span>
+        )}
+        {selected.map((r, i) => (
+          <span
+            key={r}
+            className="lex-popin"
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 5,
+              padding: "5px 8px 5px 11px", borderRadius: 20, fontSize: 12.5, fontWeight: 500,
+              background: T.black, color: "white", border: `1px solid ${T.black}`,
+              animationDelay: `${i * 50}ms`,
+            }}
+          >
+            {r}
+            <button
+              onClick={() => onChange(selected.filter(x => x !== r))}
+              style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,.6)", padding: 0, display: "flex", lineHeight: 1 }}
+              onMouseEnter={e => e.currentTarget.style.color = "white"}
+              onMouseLeave={e => e.currentTarget.style.color = "rgba(255,255,255,.6)"}
             >
-              <div style={{
-                width: 16, height: 16, borderRadius: 4, flexShrink: 0,
-                border: `2px solid ${on ? T.black : T.borderHov}`,
-                background: on ? T.black : "transparent",
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}>
-                {on && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
-              </div>
-              <span style={{ flex: 1, fontSize: 13, color: T.black, fontWeight: on ? 600 : 400 }}>{r}</span>
-              <LibraryBadge custom={isCustom} />
-            </label>
-          );
-        })}
+              <XIco size={10} />
+            </button>
+          </span>
+        ))}
       </div>
-      <AddCustomRow placeholder="Add a rulebook from your company policy library…" onAdd={handleAddCustom} />
+
+      {/* Zone 2: Add more */}
+      <div style={{ marginTop: 10 }}>
+        <button
+          onClick={() => { setAddPanelOpen(o => !o); setQ(""); }}
+          onMouseEnter={e => e.currentTarget.style.borderColor = T.borderHov}
+          onMouseLeave={e => e.currentTarget.style.borderColor = T.border}
+          style={{
+            display: "flex", alignItems: "center", gap: 5,
+            padding: "6px 13px", borderRadius: 20, fontSize: 12.5, fontWeight: 500,
+            border: `1px solid ${T.border}`, background: T.white, color: T.textSec,
+            cursor: "pointer", transition: "all .15s", fontFamily: "inherit",
+          }}
+        >
+          <PlusIco /> Add rulebook
+        </button>
+
+        {addPanelOpen && (
+          <div style={{
+            marginTop: 8, padding: "12px", background: T.bg,
+            border: `1px solid ${T.border}`, borderRadius: 10,
+            animation: "lexSlideDown .25s ease forwards",
+          }}>
+            <SearchInput value={q} onChange={setQ} placeholder="Search available rulebooks…" />
+            <div style={{ display: "flex", flexDirection: "column", gap: 5, marginTop: 10, maxHeight: 180, overflowY: "auto" }}>
+              {available.map(r => (
+                <label
+                  key={r}
+                  onClick={() => { onChange([...selected, r]); }}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 10,
+                    padding: "9px 12px", borderRadius: 8, cursor: "pointer",
+                    border: `1px solid ${T.border}`, background: T.white,
+                    transition: "all .15s",
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = T.black}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = T.border}
+                >
+                  <PlusIco />
+                  <span style={{ flex: 1, fontSize: 13, color: T.black }}>{r}</span>
+                </label>
+              ))}
+              {available.length === 0 && (
+                <span style={{ fontSize: 12, color: T.textMuted, padding: "4px 0" }}>All rulebooks already selected</span>
+              )}
+            </div>
+            <AddCustomRow placeholder="Add a custom rulebook…" onAdd={handleAddCustom} />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -1214,7 +1384,11 @@ export default function DraftPage() {
       <style>{`
         @keyframes lexSpin { to { transform: rotate(360deg); } }
         @keyframes lexFadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes lexPopIn { from { opacity: 0; transform: scale(0.85); } to { opacity: 1; transform: scale(1); } }
+        @keyframes lexPopOut { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.85); } }
+        @keyframes lexSlideDown { from { opacity: 0; max-height: 0; } to { opacity: 1; max-height: 500px; } }
         .lex-fadein { animation: lexFadeUp .35s ease forwards; }
+        .lex-popin { animation: lexPopIn .3s ease-out forwards; }
       `}</style>
 
       <div style={{ flex: 1, background: T.bg, padding: "36px 36px", overflowY: "auto" }}>

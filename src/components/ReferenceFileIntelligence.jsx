@@ -20,6 +20,15 @@ const TYPE_COLORS = {
   recital:    { bg: "#f5f5f5", border: "#ddd",    text: "#666",    barColor: "#aaa" },
 };
 
+// Draft-priority group order
+const GROUP_ORDER = ["recital", "definition", "obligation", "clause"];
+const GROUP_LABELS = {
+  recital:    "Parties & Recitals",
+  definition: "Definitions",
+  obligation: "Core Clauses",
+  clause:     "Standard Clauses",
+};
+
 // ─── Icons ─────────────────────────────────────────────────────────────────
 
 const UploadIco = () => (
@@ -37,6 +46,11 @@ const FileIco = () => (
 const XIco = ({ size = 12 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
     <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+  </svg>
+);
+const PlusIco = () => (
+  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
   </svg>
 );
 const ChevDn = () => (
@@ -57,10 +71,39 @@ const SparkSmall = () => (
 
 // ─── Block Card ────────────────────────────────────────────────────────────
 
-function BlockCard({ block, selected, onToggle, suggested }) {
+function BlockCard({ block, selected, onToggle, onRemove, onAdd, suggested, isRemoved }) {
   const [expanded, setExpanded] = useState(false);
   const [hovered, setHovered] = useState(false);
   const typeStyle = TYPE_COLORS[block.type] || TYPE_COLORS.clause;
+
+  if (isRemoved) {
+    // Compact removed block with + button
+    return (
+      <div style={{
+        display: "flex", alignItems: "center", gap: 8,
+        padding: "6px 10px", borderRadius: 6,
+        border: `1px solid ${T.border}`, background: T.bg,
+      }}>
+        <button
+          onClick={() => onAdd(block.id)}
+          style={{
+            background: "none", border: `1px solid ${T.border}`, borderRadius: 4,
+            cursor: "pointer", color: T.textSec, padding: "1px 4px", display: "flex",
+            alignItems: "center", lineHeight: 1,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = T.black; e.currentTarget.style.color = T.black; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.color = T.textSec; }}
+        >
+          <PlusIco />
+        </button>
+        <span style={{ fontSize: 12, color: T.textMuted }}>{block.title}</span>
+        <span style={{
+          fontSize: 9, fontWeight: 600, padding: "1px 5px", borderRadius: 3,
+          background: typeStyle.bg, color: typeStyle.text, textTransform: "uppercase",
+        }}>{block.type}</span>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -71,14 +114,31 @@ function BlockCard({ block, selected, onToggle, suggested }) {
         borderRadius: 8,
         borderLeft: `3px solid ${typeStyle.barColor}`,
         background: hovered ? "#fafaf8" : T.white,
-        transition: "background 0.15s, border-color 0.15s",
+        transition: "all 0.25s ease",
         overflow: "hidden",
+        position: "relative",
       }}
     >
+      {/* × remove button in top-right */}
+      <button
+        onClick={(e) => { e.stopPropagation(); onRemove(block.id); }}
+        style={{
+          position: "absolute", top: 6, right: 6, zIndex: 1,
+          background: "none", border: "none", cursor: "pointer",
+          color: T.textLight, padding: 2, opacity: hovered ? 1 : 0.3,
+          transition: "opacity 0.15s",
+        }}
+        onMouseEnter={e => e.currentTarget.style.color = "#b91c1c"}
+        onMouseLeave={e => e.currentTarget.style.color = T.textLight}
+        title="Remove block"
+      >
+        <XIco size={11} />
+      </button>
+
       <div
         style={{
           display: "flex", alignItems: "flex-start", gap: 10,
-          padding: "10px 12px", cursor: "pointer",
+          padding: "10px 28px 10px 12px", cursor: "pointer",
         }}
         onClick={() => onToggle(block.id)}
       >
@@ -99,9 +159,8 @@ function BlockCard({ block, selected, onToggle, suggested }) {
 
         {/* Content */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3, flexWrap: "wrap" }}>
             <span style={{ fontSize: 13, fontWeight: 600, color: T.black }}>{block.title}</span>
-            {/* Type badge */}
             <span style={{
               fontSize: 9.5, fontWeight: 600, padding: "1px 6px", borderRadius: 4,
               background: typeStyle.bg, border: `1px solid ${typeStyle.border}`,
@@ -109,7 +168,6 @@ function BlockCard({ block, selected, onToggle, suggested }) {
             }}>
               {block.type}
             </span>
-            {/* Importance badge */}
             {block.importance === "high" && (
               <span style={{
                 fontSize: 9.5, fontWeight: 600, padding: "1px 6px", borderRadius: 4,
@@ -119,7 +177,6 @@ function BlockCard({ block, selected, onToggle, suggested }) {
                 Important
               </span>
             )}
-            {/* AI suggested badge */}
             {suggested && (
               <span style={{
                 fontSize: 9.5, fontWeight: 600, padding: "1px 6px", borderRadius: 4,
@@ -157,14 +214,109 @@ function BlockCard({ block, selected, onToggle, suggested }) {
   );
 }
 
+// ─── Block Group ──────────────────────────────────────────────────────────
+
+function BlockGroup({ groupType, blocks, selectedBlocks, suggestedBlockIds, onToggleBlock, onRemoveBlock, onAddBlock, removedBlockIds, animDelay }) {
+  const label = GROUP_LABELS[groupType] || groupType;
+  const typeStyle = TYPE_COLORS[groupType] || TYPE_COLORS.clause;
+  const activeBlocks = blocks.filter(b => !removedBlockIds.has(b.id));
+  const removedBlocks = blocks.filter(b => removedBlockIds.has(b.id));
+  const [showRemoved, setShowRemoved] = useState(false);
+
+  if (blocks.length === 0) return null;
+
+  return (
+    <div style={{
+      animation: `lexFadeUp .35s ease ${animDelay}ms both`,
+    }}>
+      {/* Group header */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 8, marginBottom: 8, marginTop: 4,
+      }}>
+        <div style={{ width: 3, height: 14, borderRadius: 2, background: typeStyle.barColor }} />
+        <span style={{ fontSize: 11.5, fontWeight: 700, color: typeStyle.text, textTransform: "uppercase", letterSpacing: 0.5 }}>
+          {label}
+        </span>
+        <span style={{
+          fontSize: 10, fontWeight: 600, padding: "0 5px", borderRadius: 8,
+          background: typeStyle.bg, color: typeStyle.text,
+        }}>
+          {activeBlocks.length}
+        </span>
+      </div>
+
+      {/* Active blocks */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {activeBlocks.map(block => (
+          <BlockCard
+            key={block.id}
+            block={block}
+            selected={selectedBlocks.includes(block.id)}
+            suggested={suggestedBlockIds.includes(block.id)}
+            onToggle={onToggleBlock}
+            onRemove={onRemoveBlock}
+            onAdd={onAddBlock}
+            isRemoved={false}
+          />
+        ))}
+      </div>
+
+      {/* Removed blocks section */}
+      {removedBlocks.length > 0 && (
+        <div style={{ marginTop: 6 }}>
+          <button
+            onClick={() => setShowRemoved(o => !o)}
+            style={{
+              fontSize: 11, color: T.textMuted, background: "none",
+              border: "none", cursor: "pointer", fontFamily: "inherit",
+              display: "flex", alignItems: "center", gap: 4,
+              padding: "2px 0",
+            }}
+          >
+            <PlusIco /> {removedBlocks.length} removed block{removedBlocks.length !== 1 ? "s" : ""}
+            {showRemoved ? <ChevUp /> : <ChevDn />}
+          </button>
+          {showRemoved && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 4, paddingLeft: 8, borderLeft: `2px solid ${T.border}` }}>
+              {removedBlocks.map(block => (
+                <BlockCard
+                  key={block.id}
+                  block={block}
+                  selected={false}
+                  suggested={false}
+                  onToggle={() => {}}
+                  onRemove={() => {}}
+                  onAdd={onAddBlock}
+                  isRemoved={true}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Parsed File Section ───────────────────────────────────────────────────
 
 function ParsedFileSection({
   fileName, blocks, selectedBlocks, suggestedBlockIds,
-  onToggleBlock, onSelectAll, onDeselectAll, parsing,
+  onToggleBlock, onSelectAll, onDeselectAll, onRemoveBlock, onAddBlock, removedBlockIds, parsing,
 }) {
   const [expanded, setExpanded] = useState(true);
-  const selectedCount = blocks.filter(b => selectedBlocks.includes(b.id)).length;
+  const activeBlocks = blocks.filter(b => !removedBlockIds.has(b.id));
+  const selectedCount = activeBlocks.filter(b => selectedBlocks.includes(b.id)).length;
+
+  // Group blocks by type in draft-priority order
+  const grouped = {};
+  for (const type of GROUP_ORDER) {
+    grouped[type] = blocks.filter(b => b.type === type);
+  }
+  // Catch any ungrouped types
+  const knownTypes = new Set(GROUP_ORDER);
+  const other = blocks.filter(b => !knownTypes.has(b.type));
+  if (other.length > 0) grouped.clause = [...(grouped.clause || []), ...other];
 
   return (
     <div style={{
@@ -183,61 +335,49 @@ function ParsedFileSection({
         <FileIco />
         <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: T.black }}>{fileName}</span>
         {parsing ? (
-          <span style={{
-            display: "inline-flex", alignItems: "center", gap: 6,
-            fontSize: 11.5, color: T.textMuted,
-          }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11.5, color: T.textMuted }}>
             <span style={{
               width: 12, height: 12,
               border: `2px solid ${T.border}`, borderTopColor: T.black,
               borderRadius: "50%", display: "inline-block",
               animation: "lexSpin .8s linear infinite",
             }} />
-            Parsing…
+            Parsing...
           </span>
         ) : (
           <span style={{ fontSize: 11.5, color: T.textMuted }}>
-            {selectedCount}/{blocks.length} selected
+            {selectedCount}/{activeBlocks.length} selected
           </span>
         )}
         <span style={{ color: T.textMuted }}>{expanded ? <ChevUp /> : <ChevDn />}</span>
       </div>
 
-      {/* Blocks */}
+      {/* Grouped blocks */}
       {expanded && !parsing && blocks.length > 0 && (
         <div style={{ padding: "10px 12px" }}>
           {/* Bulk controls */}
           <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-            <button
-              onClick={onSelectAll}
-              style={{
-                fontSize: 11, color: T.textSec, background: "none",
-                border: `1px solid ${T.border}`, borderRadius: 6,
-                padding: "3px 10px", cursor: "pointer", fontFamily: "inherit",
-              }}
-            >
+            <button onClick={onSelectAll} style={{ fontSize: 11, color: T.textSec, background: "none", border: `1px solid ${T.border}`, borderRadius: 6, padding: "3px 10px", cursor: "pointer", fontFamily: "inherit" }}>
               Select all
             </button>
-            <button
-              onClick={onDeselectAll}
-              style={{
-                fontSize: 11, color: T.textSec, background: "none",
-                border: `1px solid ${T.border}`, borderRadius: 6,
-                padding: "3px 10px", cursor: "pointer", fontFamily: "inherit",
-              }}
-            >
+            <button onClick={onDeselectAll} style={{ fontSize: 11, color: T.textSec, background: "none", border: `1px solid ${T.border}`, borderRadius: 6, padding: "3px 10px", cursor: "pointer", fontFamily: "inherit" }}>
               Deselect all
             </button>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {blocks.map(block => (
-              <BlockCard
-                key={block.id}
-                block={block}
-                selected={selectedBlocks.includes(block.id)}
-                suggested={suggestedBlockIds.includes(block.id)}
-                onToggle={onToggleBlock}
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {GROUP_ORDER.map((type, gi) => (
+              <BlockGroup
+                key={type}
+                groupType={type}
+                blocks={grouped[type] || []}
+                selectedBlocks={selectedBlocks}
+                suggestedBlockIds={suggestedBlockIds}
+                onToggleBlock={onToggleBlock}
+                onRemoveBlock={onRemoveBlock}
+                onAddBlock={onAddBlock}
+                removedBlockIds={removedBlockIds}
+                animDelay={gi * 100}
               />
             ))}
           </div>
@@ -250,17 +390,19 @@ function ParsedFileSection({
 // ─── Main Component ────────────────────────────────────────────────────────
 
 export default function ReferenceFileIntelligence({
-  files,              // Array of { file: File, fileId, fileName, blocks, parsing }
-  selectedBlocks,     // Array of block IDs
-  suggestedBlockIds,  // Array of auto-suggested block IDs
-  onUpload,           // (fileList: FileList) => void
-  onRemoveFile,       // (index) => void
-  onToggleBlock,      // (blockId) => void
-  onSelectAllBlocks,  // (fileIndex) => void
-  onDeselectAllBlocks,// (fileIndex) => void
+  files,
+  selectedBlocks,
+  suggestedBlockIds,
+  onUpload,
+  onRemoveFile,
+  onToggleBlock,
+  onSelectAllBlocks,
+  onDeselectAllBlocks,
 }) {
   const inputRef = useRef(null);
   const [dragOver, setDragOver] = useState(false);
+  // Track removed block IDs per component instance
+  const [removedBlockIds, setRemovedBlockIds] = useState(new Set());
 
   const handleDrop = (e) => {
     e.preventDefault();
@@ -277,8 +419,33 @@ export default function ReferenceFileIntelligence({
     e.target.value = "";
   };
 
+  const handleRemoveBlock = (blockId) => {
+    // Deselect the block and mark as removed
+    if (selectedBlocks.includes(blockId)) {
+      onToggleBlock(blockId);
+    }
+    setRemovedBlockIds(prev => new Set([...prev, blockId]));
+  };
+
+  const handleAddBlock = (blockId) => {
+    // Restore block and select it
+    setRemovedBlockIds(prev => {
+      const next = new Set(prev);
+      next.delete(blockId);
+      return next;
+    });
+    if (!selectedBlocks.includes(blockId)) {
+      onToggleBlock(blockId);
+    }
+  };
+
   return (
     <div>
+      <style>{`
+        @keyframes lexSpin { to { transform: rotate(360deg); } }
+        @keyframes lexFadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+      `}</style>
+
       {/* Upload zone */}
       <div
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
@@ -308,7 +475,7 @@ export default function ReferenceFileIntelligence({
         />
       </div>
 
-      {/* Parsed files */}
+      {/* Parsed files with grouped blocks */}
       {files.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
           {files.map((f, i) => (
@@ -321,6 +488,9 @@ export default function ReferenceFileIntelligence({
                 onToggleBlock={onToggleBlock}
                 onSelectAll={() => onSelectAllBlocks(i)}
                 onDeselectAll={() => onDeselectAllBlocks(i)}
+                onRemoveBlock={handleRemoveBlock}
+                onAddBlock={handleAddBlock}
+                removedBlockIds={removedBlockIds}
                 parsing={f.parsing}
               />
               {/* Remove file button */}

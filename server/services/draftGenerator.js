@@ -39,36 +39,36 @@ function buildFallbackSections(config) {
     typeof c === "string" ? true : c.selected
   );
 
-  const clauseLabels = selectedClauses.map(c =>
-    typeof c === "string" ? c : c.label
-  );
-
-  const clauseTemplates = {
-    "Confidentiality": `Each Party agrees to keep confidential all information disclosed by the other Party that is designated as confidential or that reasonably should be understood to be confidential ("Confidential Information"). This obligation shall survive the termination of this Agreement for a period of [__] years.`,
-    "Indemnity": `Each Party shall indemnify, defend, and hold harmless the other Party from and against any claims, damages, losses, costs, and expenses (including reasonable attorneys' fees) arising out of or relating to any breach of this Agreement or any negligent or wrongful act or omission of the indemnifying Party.`,
-    "Limitation of Liability": `IN NO EVENT SHALL EITHER PARTY BE LIABLE TO THE OTHER PARTY FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, REGARDLESS OF THE CAUSE OF ACTION OR THE THEORY OF LIABILITY, EVEN IF SUCH PARTY HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES. THE TOTAL LIABILITY OF EITHER PARTY SHALL NOT EXCEED [__].`,
-    "Arbitration": `Any dispute, controversy, or claim arising out of or relating to this Agreement shall be resolved by binding arbitration in accordance with the rules of [__]. The arbitration shall be conducted in [__], and the decision of the arbitrator(s) shall be final and binding upon both Parties.`,
-    "Governing Law": `This Agreement shall be governed by and construed in accordance with the laws of [${entities.jurisdiction || "__"}], without regard to its conflict of laws provisions.`,
-    "Payment Terms": `Payment shall be made in accordance with the following terms: [__]. All payments shall be made in [currency] within [__] days of receipt of a valid invoice. Late payments shall accrue interest at the rate of [__]% per annum.`,
-    "Intellectual Property": `All intellectual property rights in any work product created under this Agreement shall vest in [__]. Each Party retains all rights in its pre-existing intellectual property. Neither Party shall use the other's intellectual property except as expressly authorized under this Agreement.`,
-    "Force Majeure": `Neither Party shall be liable for any failure or delay in performing its obligations under this Agreement to the extent such failure or delay results from circumstances beyond the reasonable control of that Party, including but not limited to acts of God, natural disasters, war, terrorism, epidemics, government orders, or labor disputes.`,
-    "Non-Compete": `During the term of this Agreement and for a period of [__] months following its termination, [Party] shall not directly or indirectly engage in any business that competes with the business of [other Party] within [geographic scope].`,
-    "Representations & Warranties": `Each Party represents and warrants that: (a) it has full power and authority to enter into this Agreement; (b) this Agreement constitutes a valid and binding obligation; (c) the execution and performance of this Agreement does not conflict with any other agreement to which it is a party.`,
-    "Termination": `This Agreement may be terminated: (a) by mutual written agreement of the Parties; (b) by either Party upon [__] days' written notice; (c) immediately by either Party upon material breach by the other Party that remains uncured after [__] days' notice. Upon termination, all rights and obligations shall cease, except those that by their nature are intended to survive.`,
-    "Assignment": `Neither Party may assign this Agreement or any rights or obligations hereunder without the prior written consent of the other Party. Any attempted assignment in violation of this provision shall be void.`,
-    "Entire Agreement": `This Agreement constitutes the entire agreement between the Parties with respect to the subject matter hereof and supersedes all prior and contemporaneous agreements, understandings, negotiations, and discussions, whether oral or written.`,
-    "Severability": `If any provision of this Agreement is held to be invalid, illegal, or unenforceable, the remaining provisions shall continue in full force and effect.`,
-    "Notice": `All notices under this Agreement shall be in writing and shall be deemed given when delivered personally, sent by registered mail, or sent by email to the addresses specified by the Parties.`,
-    "Waiver": `The failure of either Party to enforce any provision of this Agreement shall not constitute a waiver of such provision or the right to enforce it at a later time.`,
-    "Data Protection": `Each Party shall comply with all applicable data protection laws and regulations in connection with the processing of personal data under this Agreement. The Parties shall enter into a separate data processing agreement where required by applicable law.`,
-    "Non-Solicitation": `During the term of this Agreement and for a period of [__] months following its termination, neither Party shall directly or indirectly solicit or attempt to hire any employee, contractor, or agent of the other Party.`,
-    "Dispute Resolution": `The Parties shall attempt to resolve any dispute arising under this Agreement through good faith negotiation. If the dispute cannot be resolved within [__] days, either Party may initiate [mediation/arbitration/litigation] in accordance with the provisions of this Agreement.`,
-    "Insurance": `[Party] shall maintain at all times during the term of this Agreement insurance coverage of the types and in the amounts specified in Schedule [__], and shall provide certificates of insurance to the other Party upon request.`,
+  // Clause boilerplate keyed by ID (primary) with label fallback
+  const jurisdiction = entities.jurisdiction || "__";
+  const clauseTemplatesById = {
+    "c1":  `Each Party agrees to keep confidential all information disclosed by the other Party that is designated as confidential or that reasonably should be understood to be confidential ("Confidential Information"). This obligation shall survive the termination of this Agreement for a period of [__] years.`,
+    "c2":  `Each Party shall indemnify, defend, and hold harmless the other Party from and against any claims, damages, losses, costs, and expenses (including reasonable attorneys' fees) arising out of or relating to any breach of this Agreement or any negligent or wrongful act or omission of the indemnifying Party.`,
+    "c3":  `IN NO EVENT SHALL EITHER PARTY BE LIABLE TO THE OTHER PARTY FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, REGARDLESS OF THE CAUSE OF ACTION OR THE THEORY OF LIABILITY, EVEN IF SUCH PARTY HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES. THE TOTAL LIABILITY OF EITHER PARTY SHALL NOT EXCEED [__].`,
+    "c4":  `Any dispute, controversy, or claim arising out of or relating to this Agreement shall be resolved by binding arbitration in accordance with the rules of [__]. The arbitration shall be conducted in [__], and the decision of the arbitrator(s) shall be final and binding upon both Parties.`,
+    "c5":  `This Agreement shall be governed by and construed in accordance with the laws of [${jurisdiction}], without regard to its conflict of laws provisions.`,
+    "c6":  `Payment shall be made in accordance with the following terms: [__]. All payments shall be made in [currency] within [__] days of receipt of a valid invoice. Late payments shall accrue interest at the rate of [__]% per annum.`,
+    "c7":  `All intellectual property rights in any work product created under this Agreement shall vest in [__]. Each Party retains all rights in its pre-existing intellectual property. Neither Party shall use the other's intellectual property except as expressly authorized under this Agreement.`,
+    "c8":  `Neither Party shall be liable for any failure or delay in performing its obligations under this Agreement to the extent such failure or delay results from circumstances beyond the reasonable control of that Party, including but not limited to acts of God, natural disasters, war, terrorism, epidemics, government orders, or labor disputes.`,
+    "c9":  `During the term of this Agreement and for a period of [__] months following its termination, [Party] shall not directly or indirectly engage in any business that competes with the business of [other Party] within [geographic scope].`,
+    "c10": `Each Party represents and warrants that: (a) it has full power and authority to enter into this Agreement; (b) this Agreement constitutes a valid and binding obligation; (c) the execution and performance of this Agreement does not conflict with any other agreement to which it is a party.`,
+    "c11": `This Agreement may be terminated: (a) by mutual written agreement of the Parties; (b) by either Party upon [__] days' written notice; (c) immediately by either Party upon material breach by the other Party that remains uncured after [__] days' notice. Upon termination, all rights and obligations shall cease, except those that by their nature are intended to survive.`,
+    "c12": `Neither Party may assign this Agreement or any rights or obligations hereunder without the prior written consent of the other Party. Any attempted assignment in violation of this provision shall be void.`,
+    "c13": `This Agreement constitutes the entire agreement between the Parties with respect to the subject matter hereof and supersedes all prior and contemporaneous agreements, understandings, negotiations, and discussions, whether oral or written.`,
+    "c14": `If any provision of this Agreement is held to be invalid, illegal, or unenforceable, the remaining provisions shall continue in full force and effect.`,
+    "c15": `All notices under this Agreement shall be in writing and shall be deemed given when delivered personally, sent by registered mail, or sent by email to the addresses specified by the Parties.`,
+    "c16": `The failure of either Party to enforce any provision of this Agreement shall not constitute a waiver of such provision or the right to enforce it at a later time.`,
+    "c17": `Each Party shall comply with all applicable data protection laws and regulations in connection with the processing of personal data under this Agreement. The Parties shall enter into a separate data processing agreement where required by applicable law.`,
+    "c18": `During the term of this Agreement and for a period of [__] months following its termination, neither Party shall directly or indirectly solicit or attempt to hire any employee, contractor, or agent of the other Party.`,
+    "c19": `The Parties shall attempt to resolve any dispute arising under this Agreement through good faith negotiation. If the dispute cannot be resolved within [__] days, either Party may initiate [mediation/arbitration/litigation] in accordance with the provisions of this Agreement.`,
+    "c20": `[Party] shall maintain at all times during the term of this Agreement insurance coverage of the types and in the amounts specified in Schedule [__], and shall provide certificates of insurance to the other Party upon request.`,
   };
 
-  // Add clause sections
-  clauseLabels.forEach((label, i) => {
-    const body = clauseTemplates[label] || `[${label} clause content to be drafted based on specific requirements and applicable law.]`;
+  // Add clause sections — lookup by ID first, then label fallback
+  selectedClauses.forEach((clause, i) => {
+    const id = typeof clause === "string" ? null : clause.id;
+    const label = typeof clause === "string" ? clause : clause.label;
+    const body = (id && clauseTemplatesById[id]) || `[${label} clause content to be drafted based on specific requirements and applicable law.]`;
     sections.push({
       id: `s${i + 2}`,
       title: label.toUpperCase(),
