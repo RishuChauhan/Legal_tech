@@ -1503,43 +1503,67 @@ export default function DraftPage() {
                     </button>
                   </div>
 
-                  {/* Compact AI analysis summary — key info in one row */}
+                  {/* Compact AI analysis summary */}
                   <div className="lex-fadein" style={{
                     background: T.white, border: `1px solid ${T.border}`, borderRadius: 10,
-                    padding: "10px 16px", display: "flex", flexWrap: "wrap", gap: 16, alignItems: "center",
+                    padding: "12px 16px", display: "flex", flexDirection: "column", gap: 10,
                   }}>
-                    <div>
-                      <div style={{ fontSize: 10.5, fontWeight: 700, color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>Detected Type</div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: T.black, display: "flex", alignItems: "center", gap: 6 }}>
-                        {suggestions.documentType}
-                        <span style={{
-                          fontSize: 10, fontWeight: 600, padding: "1px 6px", borderRadius: 8,
-                          background: suggestions.confidence >= 70 ? "#f0fdf4" : "#fefce8",
-                          border: `1px solid ${suggestions.confidence >= 70 ? "#bbf7d0" : "#fde68a"}`,
-                          color: suggestions.confidence >= 70 ? "#16a34a" : "#92400e",
-                        }}>
-                          {suggestions.confidence}%
-                        </span>
-                      </div>
-                    </div>
-                    {suggestions.entities?.parties?.length > 0 && (
+                    {/* Row 1: Type + confidence + jurisdiction + industry */}
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "center" }}>
                       <div>
-                        <div style={{ fontSize: 10.5, fontWeight: 700, color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>Parties</div>
-                        <div style={{ fontSize: 12.5, color: T.black }}>
-                          {suggestions.entities.parties.map(p => p.role).join(" & ")}
+                        <div style={{ fontSize: 10.5, fontWeight: 700, color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>Detected Type</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: T.black, display: "flex", alignItems: "center", gap: 6 }}>
+                          {suggestions.documentType}
+                          <span style={{
+                            fontSize: 10, fontWeight: 600, padding: "1px 6px", borderRadius: 8,
+                            background: suggestions.confidence >= 70 ? "#f0fdf4" : "#fefce8",
+                            border: `1px solid ${suggestions.confidence >= 70 ? "#bbf7d0" : "#fde68a"}`,
+                            color: suggestions.confidence >= 70 ? "#16a34a" : "#92400e",
+                          }}>
+                            {suggestions.confidence}%
+                          </span>
+                        </div>
+                      </div>
+                      {suggestions.entities?.jurisdiction && (
+                        <div>
+                          <div style={{ fontSize: 10.5, fontWeight: 700, color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>Jurisdiction</div>
+                          <div style={{ fontSize: 12.5, color: T.black, textTransform: "capitalize" }}>{suggestions.entities.jurisdiction}</div>
+                        </div>
+                      )}
+                      {suggestions.entities?.industry && (
+                        <div>
+                          <div style={{ fontSize: 10.5, fontWeight: 700, color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>Industry</div>
+                          <div style={{ fontSize: 12.5, color: T.black, textTransform: "capitalize" }}>{suggestions.entities.industry}</div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Row 2: Parties with names */}
+                    {suggestions.entities?.parties?.length > 0 && (
+                      <div style={{ borderTop: `1px solid ${T.border}`, paddingTop: 8 }}>
+                        <div style={{ fontSize: 10.5, fontWeight: 700, color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>Parties</div>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                          {suggestions.entities.parties.map((p, i) => (
+                            <div key={i} style={{
+                              fontSize: 12, padding: "3px 10px", borderRadius: 6,
+                              background: "#f5f4f1", border: `1px solid ${T.border}`,
+                              display: "flex", alignItems: "center", gap: 4,
+                            }}>
+                              <span style={{ fontWeight: 600, color: T.black, textTransform: "capitalize" }}>{p.role}</span>
+                              {p.description && p.description !== p.role && (
+                                <span style={{ color: T.textSec }}> — {p.description}</span>
+                              )}
+                            </div>
+                          ))}
                         </div>
                       </div>
                     )}
-                    {suggestions.entities?.jurisdiction && (
-                      <div>
-                        <div style={{ fontSize: 10.5, fontWeight: 700, color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>Jurisdiction</div>
-                        <div style={{ fontSize: 12.5, color: T.black, textTransform: "capitalize" }}>{suggestions.entities.jurisdiction}</div>
-                      </div>
-                    )}
-                    {suggestions.entities?.industry && (
-                      <div>
-                        <div style={{ fontSize: 10.5, fontWeight: 700, color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>Industry</div>
-                        <div style={{ fontSize: 12.5, color: T.black, textTransform: "capitalize" }}>{suggestions.entities.industry}</div>
+
+                    {/* Row 3: Purpose */}
+                    {suggestions.entities?.purpose && (
+                      <div style={{ borderTop: `1px solid ${T.border}`, paddingTop: 8 }}>
+                        <div style={{ fontSize: 10.5, fontWeight: 700, color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>Purpose</div>
+                        <div style={{ fontSize: 12.5, color: T.textSec, lineHeight: 1.4 }}>{suggestions.entities.purpose}</div>
                       </div>
                     )}
                   </div>

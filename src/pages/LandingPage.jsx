@@ -106,7 +106,7 @@ export default function LandingPage({ onLogin }) {
 
           {/* "See how it works" fades out when trial CTA appears to avoid crowding */}
           <button onClick={onLogin} style={{
-            padding: "8px 18px", border: "none", borderRadius: 8,
+            padding: "8px 18px", borderRadius: 8,
             background: scrolled ? "transparent" : "#111",
             border: scrolled ? "1px solid #d4d0ca" : "none",
             color: scrolled ? "#333" : "white",
