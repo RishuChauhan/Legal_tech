@@ -46,7 +46,13 @@ export async function generateJSON(prompt, { maxTokens = 1024, jsonType = "objec
     const jsonMatch = text.match(pattern);
     if (!jsonMatch) return null;
 
-    return JSON.parse(jsonMatch[0]);
+    // Strip JS-style comments that LLMs sometimes add (// ... and /* ... */)
+    const cleaned = jsonMatch[0]
+      .replace(/\/\/[^\n]*/g, "")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/,\s*([}\]])/g, "$1"); // trailing commas
+
+    return JSON.parse(cleaned);
   } catch (err) {
     console.error("Groq generation failed:", err.message);
     return null;

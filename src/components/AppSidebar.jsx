@@ -40,6 +40,8 @@ export default function AppSidebar({ active, onNav, collapsed = false, hovered =
     >
       <div style={{
         padding: expanded ? "18px 18px 14px" : "18px 4px 14px",
+        display: "flex",
+        justifyContent: expanded ? "flex-start" : "center",
         transition: "padding 250ms cubic-bezier(0.4, 0, 0.2, 1)",
       }}>
         <Logo collapsed={!expanded} />

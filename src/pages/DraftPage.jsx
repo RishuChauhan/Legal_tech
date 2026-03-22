@@ -39,6 +39,9 @@ const DEFAULT_CLAUSES = [
   "Non-Compete", "Representations & Warranties", "Termination", "Assignment",
   "Entire Agreement", "Severability", "Notice", "Waiver", "Data Protection",
   "Non-Solicitation", "Dispute Resolution", "Insurance",
+  "Scope of Work / Services", "Compliance with Laws", "Audit Rights",
+  "Amendment / Modification", "Survival", "Subcontracting",
+  "Anti-Bribery / Anti-Corruption",
 ];
 
 const DEFAULT_TEMPLATES = [
@@ -49,7 +52,9 @@ const DEFAULT_TEMPLATES = [
   "Privacy Policy", "Purchase Order", "Mutual Confidentiality Agreement",
   "Independent Contractor Agreement", "Master Service Agreement",
   "Affiliate/Referral Agreement", "General Licensing Agreement",
-  "Bill of Sale / Asset Purchase",
+  "Bill of Sale / Asset Purchase", "Share Purchase / M&A Agreement",
+  "Memorandum of Understanding",
+  "Letter of Intent", "Service Level Agreement", "Statement of Work",
 ];
 
 const DEFAULT_RULEBOOKS = [
@@ -708,9 +713,27 @@ function TemplateSelector({ selected, onChange, customTemplates, onAddCustom }) 
           >
             Change
           </button>
+          <button
+            onClick={() => { onChange(""); setChangePanelOpen(false); }}
+            style={{ fontSize: 12, color: "#cc3333", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textDecoration: "underline", marginLeft: 4 }}
+          >
+            Clear
+          </button>
         </div>
       ) : (
-        <span style={{ fontSize: 12.5, color: T.textMuted }}>No template selected</span>
+        <div
+          onClick={() => { setChangePanelOpen(o => !o); setQ(""); }}
+          className="lex-popin"
+          style={{
+            display: "flex", alignItems: "center", gap: 10,
+            padding: "10px 14px", borderRadius: 10, cursor: "pointer",
+            border: `1px dashed ${T.textMuted}`, background: T.white,
+          }}
+        >
+          <span style={{ fontSize: 12.5, color: T.textMuted, fontStyle: "italic" }}>
+            No template selected — click to choose or continue without one
+          </span>
+        </div>
       )}
 
       {/* Zone 2: Change panel */}
@@ -722,6 +745,21 @@ function TemplateSelector({ selected, onChange, customTemplates, onAddCustom }) 
         }}>
           <SearchInput value={q} onChange={setQ} placeholder="Search templates…" />
           <div style={{ display: "flex", flexDirection: "column", gap: 5, marginTop: 10, maxHeight: 240, overflowY: "auto" }}>
+            <label
+              onClick={() => { onChange(""); setChangePanelOpen(false); }}
+              style={{
+                display: "flex", alignItems: "center", gap: 10,
+                padding: "9px 12px", borderRadius: 8, cursor: "pointer",
+                border: `1px dashed ${T.textMuted}`, background: T.white,
+                transition: "all .15s",
+              }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = T.black}
+              onMouseLeave={e => e.currentTarget.style.borderColor = T.textMuted}
+            >
+              <span style={{ flex: 1, fontSize: 13, color: T.textMuted, fontStyle: "italic" }}>
+                No template — start from scratch
+              </span>
+            </label>
             {alternatives.map(t => {
               const isCustom = customTemplates.includes(t) && !DEFAULT_TEMPLATES.includes(t);
               return (
@@ -1162,7 +1200,11 @@ export default function DraftPage() {
 
       const apiRulebook = result.data.suggestions?.rulebook;
       const rbName = typeof apiRulebook === "string" ? apiRulebook : apiRulebook?.name || "";
-      setRulebooks(rbName ? [rbName] : []);
+      const additionalRbs = (result.data.suggestions?.additionalRulebooks || [])
+        .map(r => typeof r === "string" ? r : r?.name)
+        .filter(Boolean);
+      const allRbs = rbName ? [rbName, ...additionalRbs.filter(n => n !== rbName)] : additionalRbs;
+      setRulebooks(allRbs);
 
       setDraftState(DraftState.SUGGESTIONS_READY);
       setTimeout(() => configRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 200);
@@ -1411,123 +1453,212 @@ export default function DraftPage() {
           {/* ── Proactive drafting flow ── */}
           {isProactive && (
             <>
-              {/* Step 1 — Instructions */}
-              {stateAtLeast(draftState, DraftState.INTENT_INPUT) && draftState !== DraftState.COMPLETE && (
-                <div className="lex-fadein">
-                  <StepLabel n="1" label="Write your drafting instructions" />
-                  <DraftIntentInput onSubmit={handleAnalyse} loading={draftState === DraftState.ANALYSING} />
-                </div>
-              )}
+              {/* ── PRE-ANALYSIS: Full instruction input ── */}
+              {!stateAtLeast(draftState, DraftState.SUGGESTIONS_READY) && draftState !== DraftState.COMPLETE && (
+                <>
+                  {/* Step 1 — Instructions */}
+                  {stateAtLeast(draftState, DraftState.INTENT_INPUT) && (
+                    <div className="lex-fadein">
+                      <StepLabel n="1" label="Write your drafting instructions" />
+                      <DraftIntentInput onSubmit={handleAnalyse} loading={draftState === DraftState.ANALYSING} />
+                    </div>
+                  )}
 
-              {/* Analysing spinner */}
-              {draftState === DraftState.ANALYSING && (
-                <div style={{ textAlign: "center", padding: "12px 0" }}>
-                  <div style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "9px 18px", background: T.white, border: `1px solid ${T.border}`, borderRadius: 30 }}>
-                    <span style={{ width: 13, height: 13, border: `2px solid ${T.border}`, borderTopColor: T.black, borderRadius: "50%", display: "inline-block", animation: "lexSpin .8s linear infinite" }} />
-                    <span style={{ fontSize: 13, color: T.textSec }}>Analysing document intent…</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Error state */}
-              {draftState === DraftState.ERROR && error && (
-                <ErrorDisplay error={error} onRetry={handleRetry} />
-              )}
-
-              {/* Step 2 — AI Suggestions */}
-              {suggestions && stateAtLeast(draftState, DraftState.SUGGESTIONS_READY) && draftState !== DraftState.COMPLETE && (
-                <div className="lex-fadein">
-                  <StepLabel n="2" label="AI recommendations" />
-                  <AISuggestionsPanel suggestions={suggestions} />
-                </div>
-              )}
-
-              {/* Step 3 — Configuration */}
-              {suggestions && stateAtLeast(draftState, DraftState.SUGGESTIONS_READY) && draftState !== DraftState.COMPLETE && (
-                <div ref={configRef} className="lex-fadein">
-                  <StepLabel n="3" label="Review and edit drafting components" />
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    <ConfigurationCard title="Template">
-                      <TemplateSelector
-                        selected={template}
-                        onChange={setTemplate}
-                        customTemplates={customTemplates}
-                        onAddCustom={label => setCustomTemplates(prev => [...prev, label])}
-                      />
-                    </ConfigurationCard>
-                    <ConfigurationCard title="Clauses">
-                      <ClauseSelector
-                        clauses={clauses}
-                        onChange={setClauses}
-                        customClauses={customClauses}
-                        onAddCustom={label => setCustomClauses(prev => [...prev, label])}
-                      />
-                    </ConfigurationCard>
-                    <ConfigurationCard title="Rulebooks">
-                      <RulebookSelector
-                        selected={rulebooks}
-                        onChange={setRulebooks}
-                        customRulebooks={customRulebooks}
-                        onAddCustom={label => setCustomRulebooks(prev => [...prev, label])}
-                      />
-                    </ConfigurationCard>
-                  </div>
-                </div>
-              )}
-
-              {/* Step 4 — Reference Files */}
-              {suggestions && stateAtLeast(draftState, DraftState.SUGGESTIONS_READY) && draftState !== DraftState.COMPLETE && (
-                <div className="lex-fadein">
-                  <StepLabel n="4" label="Upload reference files (optional)" />
-                  <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 12, padding: "14px 18px" }}>
-                    <ReferenceFileIntelligence
-                      files={refFiles}
-                      selectedBlocks={selectedBlocks}
-                      suggestedBlockIds={suggestedBlockIds}
-                      onUpload={handleFileUpload}
-                      onRemoveFile={handleRemoveFile}
-                      onToggleBlock={handleToggleBlock}
-                      onSelectAllBlocks={handleSelectAllBlocks}
-                      onDeselectAllBlocks={handleDeselectAllBlocks}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Step 5 — Generate */}
-              {suggestions && stateAtLeast(draftState, DraftState.SUGGESTIONS_READY) && draftState !== DraftState.COMPLETE && draftState !== DraftState.ERROR && (
-                <div className="lex-fadein">
-                  <StepLabel n="5" label="Generate your draft" />
-                  <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 10, padding: "12px 16px", marginBottom: 14, display: "flex", flexWrap: "wrap", gap: 16 }}>
-                    {[
-                      { label: "Template",   value: template || "None" },
-                      { label: "Clauses",    value: `${selectedClauseCount} selected` },
-                      { label: "Rulebooks",  value: rulebooks.length > 0 ? rulebooks.join(", ") : "None" },
-                      { label: "Ref. Files", value: refFiles.length > 0 ? `${refFiles.length} file(s), ${selectedBlocks.length} block(s)` : "None" },
-                    ].map(({ label, value }) => (
-                      <div key={label}>
-                        <div style={{ fontSize: 10.5, fontWeight: 700, color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>{label}</div>
-                        <div style={{ fontSize: 12.5, color: T.black, fontWeight: 500 }}>{value}</div>
+                  {/* Analysing spinner */}
+                  {draftState === DraftState.ANALYSING && (
+                    <div style={{ textAlign: "center", padding: "12px 0" }}>
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "9px 18px", background: T.white, border: `1px solid ${T.border}`, borderRadius: 30 }}>
+                        <span style={{ width: 13, height: 13, border: `2px solid ${T.border}`, borderTopColor: T.black, borderRadius: "50%", display: "inline-block", animation: "lexSpin .8s linear infinite" }} />
+                        <span style={{ fontSize: 13, color: T.textSec }}>Analysing document intent…</span>
                       </div>
-                    ))}
+                    </div>
+                  )}
+
+                  {/* Error state */}
+                  {draftState === DraftState.ERROR && error && (
+                    <ErrorDisplay error={error} onRetry={handleRetry} />
+                  )}
+                </>
+              )}
+
+              {/* ── POST-ANALYSIS: Compact summary + configuration ── */}
+              {suggestions && stateAtLeast(draftState, DraftState.SUGGESTIONS_READY) && draftState !== DraftState.COMPLETE && (
+                <>
+                  {/* Compact instruction summary bar */}
+                  <div className="lex-fadein" style={{
+                    background: T.white, border: `1px solid ${T.border}`, borderRadius: 10,
+                    padding: "10px 16px", display: "flex", alignItems: "center", gap: 12,
+                  }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 10.5, fontWeight: 700, color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>Your Instructions</div>
+                      <div style={{ fontSize: 12.5, color: T.black, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {intentText}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => { setSuggestions(null); setDraftState(DraftState.INTENT_INPUT); }}
+                      style={{ flexShrink: 0, padding: "5px 12px", borderRadius: 6, border: `1px solid ${T.border}`, background: T.white, color: T.textSec, fontSize: 12, cursor: "pointer", fontFamily: "inherit", fontWeight: 500 }}
+                    >
+                      Edit
+                    </button>
                   </div>
-                  <button
-                    onClick={handleGenerate}
-                    disabled={draftState === DraftState.GENERATING}
-                    onMouseEnter={e => { if (draftState !== DraftState.GENERATING) e.currentTarget.style.background = T.blackHov; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = T.black; }}
-                    style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "14px 24px", borderRadius: 10, border: "none", background: T.black, color: "white", fontSize: 14, fontWeight: 700, cursor: draftState === DraftState.GENERATING ? "default" : "pointer", transition: "background .2s", fontFamily: "inherit", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}
-                  >
-                    {draftState === DraftState.GENERATING ? (
-                      <>
-                        <span style={{ width: 14, height: 14, border: "2px solid rgba(255,255,255,.35)", borderTopColor: "white", borderRadius: "50%", display: "inline-block", animation: "lexSpin .7s linear infinite" }} />
-                        Generating Draft…
-                      </>
-                    ) : (
-                      <><SparkIcon /> Generate Draft</>
+
+                  {/* Compact AI analysis summary — key info in one row */}
+                  <div className="lex-fadein" style={{
+                    background: T.white, border: `1px solid ${T.border}`, borderRadius: 10,
+                    padding: "10px 16px", display: "flex", flexWrap: "wrap", gap: 16, alignItems: "center",
+                  }}>
+                    <div>
+                      <div style={{ fontSize: 10.5, fontWeight: 700, color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>Detected Type</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: T.black, display: "flex", alignItems: "center", gap: 6 }}>
+                        {suggestions.documentType}
+                        <span style={{
+                          fontSize: 10, fontWeight: 600, padding: "1px 6px", borderRadius: 8,
+                          background: suggestions.confidence >= 70 ? "#f0fdf4" : "#fefce8",
+                          border: `1px solid ${suggestions.confidence >= 70 ? "#bbf7d0" : "#fde68a"}`,
+                          color: suggestions.confidence >= 70 ? "#16a34a" : "#92400e",
+                        }}>
+                          {suggestions.confidence}%
+                        </span>
+                      </div>
+                    </div>
+                    {suggestions.entities?.parties?.length > 0 && (
+                      <div>
+                        <div style={{ fontSize: 10.5, fontWeight: 700, color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>Parties</div>
+                        <div style={{ fontSize: 12.5, color: T.black }}>
+                          {suggestions.entities.parties.map(p => p.role).join(" & ")}
+                        </div>
+                      </div>
                     )}
-                  </button>
-                </div>
+                    {suggestions.entities?.jurisdiction && (
+                      <div>
+                        <div style={{ fontSize: 10.5, fontWeight: 700, color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>Jurisdiction</div>
+                        <div style={{ fontSize: 12.5, color: T.black, textTransform: "capitalize" }}>{suggestions.entities.jurisdiction}</div>
+                      </div>
+                    )}
+                    {suggestions.entities?.industry && (
+                      <div>
+                        <div style={{ fontSize: 10.5, fontWeight: 700, color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>Industry</div>
+                        <div style={{ fontSize: 12.5, color: T.black, textTransform: "capitalize" }}>{suggestions.entities.industry}</div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Clarifying questions (collapsible) */}
+                  {suggestions.customizationPrompts?.length > 0 && (
+                    <div className="lex-fadein" style={{ padding: "8px 14px", background: "#f8f7f4", borderRadius: 8, border: `1px solid ${T.border}` }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 4 }}>Clarifying Questions</div>
+                      {suggestions.customizationPrompts.map((q, i) => (
+                        <div key={i} style={{ fontSize: 12, color: T.textSec, marginBottom: 3, paddingLeft: 10, borderLeft: `2px solid ${T.border}` }}>
+                          {q}
+                        </div>
+                      ))}
+                      <div style={{ fontSize: 11, color: T.textLight, marginTop: 4 }}>
+                        Click "Edit" above to refine your instructions.
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Configuration — Template, Clauses, Rulebooks */}
+                  <div ref={configRef} className="lex-fadein">
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      <ConfigurationCard title="Template">
+                        <TemplateSelector
+                          selected={template}
+                          onChange={setTemplate}
+                          customTemplates={customTemplates}
+                          onAddCustom={label => setCustomTemplates(prev => [...prev, label])}
+                        />
+                      </ConfigurationCard>
+                      <ConfigurationCard title="Clauses">
+                        <ClauseSelector
+                          clauses={clauses}
+                          onChange={setClauses}
+                          customClauses={customClauses}
+                          onAddCustom={label => setCustomClauses(prev => [...prev, label])}
+                        />
+                      </ConfigurationCard>
+                      <ConfigurationCard title="Rulebooks">
+                        <RulebookSelector
+                          selected={rulebooks}
+                          onChange={setRulebooks}
+                          customRulebooks={customRulebooks}
+                          onAddCustom={label => setCustomRulebooks(prev => [...prev, label])}
+                        />
+                      </ConfigurationCard>
+                    </div>
+                  </div>
+
+                  {/* Reference Files */}
+                  <div className="lex-fadein">
+                    <ConfigurationCard title="Reference Files (optional)" defaultOpen={false}>
+                      <ReferenceFileIntelligence
+                        files={refFiles}
+                        selectedBlocks={selectedBlocks}
+                        suggestedBlockIds={suggestedBlockIds}
+                        onUpload={handleFileUpload}
+                        onRemoveFile={handleRemoveFile}
+                        onToggleBlock={handleToggleBlock}
+                        onSelectAllBlocks={handleSelectAllBlocks}
+                        onDeselectAllBlocks={handleDeselectAllBlocks}
+                      />
+                    </ConfigurationCard>
+                  </div>
+
+                  {/* Sticky Generate bar */}
+                  <div style={{
+                    position: "sticky", bottom: 0, zIndex: 5,
+                    background: "linear-gradient(transparent, #ffffff 20%)",
+                    paddingTop: 20, paddingBottom: 4,
+                  }}>
+                    <div style={{
+                      background: T.white, border: `1px solid ${T.border}`, borderRadius: 12,
+                      padding: "12px 16px", display: "flex", alignItems: "center", gap: 16,
+                      boxShadow: "0 -2px 12px rgba(0,0,0,0.06)",
+                    }}>
+                      <div style={{ flex: 1, display: "flex", flexWrap: "wrap", gap: 14 }}>
+                        {[
+                          { label: "Template", value: template || "None" },
+                          { label: "Clauses", value: `${selectedClauseCount} selected` },
+                          { label: "Rulebooks", value: rulebooks.length > 0 ? rulebooks.join(", ") : "None" },
+                        ].map(({ label, value }) => (
+                          <div key={label}>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>{label}</div>
+                            <div style={{ fontSize: 12, color: T.black, fontWeight: 500, maxWidth: 160, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{value}</div>
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        onClick={handleGenerate}
+                        disabled={draftState === DraftState.GENERATING}
+                        onMouseEnter={e => { if (draftState !== DraftState.GENERATING) e.currentTarget.style.background = T.blackHov; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = T.black; }}
+                        style={{
+                          flexShrink: 0, display: "flex", alignItems: "center", gap: 8,
+                          padding: "12px 28px", borderRadius: 10, border: "none",
+                          background: T.black, color: "white", fontSize: 14, fontWeight: 700,
+                          cursor: draftState === DraftState.GENERATING ? "default" : "pointer",
+                          transition: "background .2s", fontFamily: "inherit",
+                          boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+                        }}
+                      >
+                        {draftState === DraftState.GENERATING ? (
+                          <>
+                            <span style={{ width: 14, height: 14, border: "2px solid rgba(255,255,255,.35)", borderTopColor: "white", borderRadius: "50%", display: "inline-block", animation: "lexSpin .7s linear infinite" }} />
+                            Generating…
+                          </>
+                        ) : (
+                          <><SparkIcon /> Generate Draft</>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Error state (post-analysis) */}
+              {draftState === DraftState.ERROR && error && suggestions && (
+                <ErrorDisplay error={error} onRetry={handleRetry} />
               )}
 
               {/* Generated output */}

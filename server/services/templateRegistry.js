@@ -14,143 +14,221 @@ function kwMatch(text, keyword) {
   return new RegExp(`\\b${escaped}\\b`, "i").test(text);
 }
 
-// ─── Document Type Taxonomy (20 types) ───────────────────────────────────────
+/**
+ * Clause-context filter: detects if a keyword appears near clause-requesting
+ * words (e.g. "include data protection clause"). Returns true if the keyword
+ * is being used as a clause reference, NOT a document-type signal.
+ */
+function isClauseContext(text, keyword) {
+  const idx = text.indexOf(keyword);
+  if (idx === -1) return false;
+  const start = Math.max(0, idx - 60);
+  const end = Math.min(text.length, idx + keyword.length + 60);
+  const window = text.substring(start, end);
+  return /\b(clause|clauses|provision|provisions|section|include|add|containing|covering|ensure|ensuring|require|requiring|including|strong|robust)\b/i.test(window);
+}
+
+/**
+ * Extract the core document type from imperative patterns like "draft a [X] for..."
+ * Returns the extracted noun phrase in lowercase, or null.
+ */
+function extractIntentPhrase(text) {
+  const m = text.match(
+    /(?:draft|prepare|create|generate|write|make|draw up|need|want)\s+(?:a|an|the|my|our|me\s+a|me\s+an)?\s*(.+?)(?:\s+(?:for|between|with|that|which|to\s|in\s|under|including|containing|covering|ensuring)\b|[.,;]|$)/i
+  );
+  return m ? m[1].trim().toLowerCase() : null;
+}
+
+// ─── Document Categories (agreement vs policy vs standalone) ────────────────
+
+const DOCUMENT_CATEGORIES = {
+  "vendor-agreement": "agreement", "nda": "agreement", "mutual-nda": "agreement",
+  "employment-agreement": "agreement", "consulting-agreement": "agreement",
+  "contractor-agreement": "agreement", "shareholder-agreement": "agreement",
+  "partnership-agreement": "agreement", "franchise-agreement": "agreement",
+  "distribution-agreement": "agreement", "affiliate-agreement": "agreement",
+  "licensing-agreement": "agreement", "msa": "agreement", "mou": "agreement",
+  "sow": "supplemental", "sla": "supplemental", "loan-agreement": "agreement",
+  "lease-agreement": "agreement", "software-license": "agreement",
+  "privacy-policy": "policy", "terms-of-service": "policy",
+  "power-of-attorney": "standalone", "bill-of-sale": "standalone",
+  "purchase-order": "standalone", "loi": "pre-contractual",
+  "merger-acquisition": "agreement",
+};
+
+// ─── Document Type Taxonomy (26 types) ───────────────────────────────────────
 
 export const DOCUMENT_TYPES = [
-  { id: "vendor-agreement",      label: "Vendor Agreement",                  keywords: ["vendor", "supplier", "service provider", "outsource", "procurement"] },
-  { id: "nda",                   label: "Non-Disclosure Agreement",          keywords: ["nda", "non-disclosure", "confidential", "secrecy", "proprietary"] },
-  { id: "employment-agreement",  label: "Employment Agreement",              keywords: ["employment", "employee", "hire", "hiring", "job", "offer letter", "compensation", "salary"] },
-  { id: "shareholder-agreement", label: "Shareholder Agreement",             keywords: ["shareholder", "stockholder", "equity", "shares", "dividend", "voting rights"] },
-  { id: "lease-agreement",       label: "Lease Agreement",                   keywords: ["lease", "rent", "tenant", "landlord", "premises", "occupancy"] },
-  { id: "consulting-agreement",  label: "Consulting Agreement",              keywords: ["consultant", "consulting", "advisory", "advisor"] },
-  { id: "software-license",      label: "Software License Agreement",        keywords: ["software", "license", "saas", "subscription", "end user", "eula"] },
-  { id: "partnership-agreement", label: "Partnership Agreement",             keywords: ["partnership", "partner", "joint venture", "co-founder"] },
-  { id: "loan-agreement",        label: "Loan Agreement",                    keywords: ["loan", "lending", "borrower", "lender", "interest rate", "repayment", "mortgage"] },
-  { id: "franchise-agreement",   label: "Franchise Agreement",               keywords: ["franchise", "franchisee", "franchisor", "territory", "royalty"] },
-  { id: "distribution-agreement",label: "Distribution Agreement",            keywords: ["distribution", "distributor", "reseller", "channel", "wholesale"] },
-  { id: "merger-acquisition",    label: "Merger & Acquisition Agreement",    keywords: ["merger", "acquisition", "m&a", "buyout", "takeover", "due diligence"] },
+  { id: "vendor-agreement",      label: "Vendor Agreement",                  keywords: ["vendor", "vendor agreement", "vendor contract", "vendor service", "services agreement", "supplier", "service provider", "outsource", "procurement"] },
+  { id: "nda",                   label: "Non-Disclosure Agreement",          keywords: ["nda", "non-disclosure", "non disclosure agreement", "confidentiality agreement", "secrecy", "proprietary"] },
+  { id: "employment-agreement",  label: "Employment Agreement",              keywords: ["employment", "employment agreement", "employment contract", "employee", "hire", "hiring", "job", "offer letter", "compensation", "salary"] },
+  { id: "shareholder-agreement", label: "Shareholder Agreement",             keywords: ["shareholder", "shareholder agreement", "sha", "stockholder", "equity", "shares", "dividend", "voting rights"] },
+  { id: "lease-agreement",       label: "Lease Agreement",                   keywords: ["lease", "lease agreement", "rent", "tenant", "landlord", "premises", "occupancy", "rental agreement"] },
+  { id: "consulting-agreement",  label: "Consulting Agreement",              keywords: ["consultant", "consulting", "consulting agreement", "advisory", "advisor", "consultancy"] },
+  { id: "software-license",      label: "Software License Agreement",        keywords: ["software license", "software", "license", "saas", "subscription", "end user", "eula", "software agreement"] },
+  { id: "partnership-agreement", label: "Partnership Agreement",             keywords: ["partnership", "partnership agreement", "partner", "joint venture", "jv", "co-founder"] },
+  { id: "loan-agreement",        label: "Loan Agreement",                    keywords: ["loan", "loan agreement", "lending", "borrower", "lender", "interest rate", "repayment", "mortgage", "promissory note"] },
+  { id: "franchise-agreement",   label: "Franchise Agreement",               keywords: ["franchise", "franchise agreement", "franchisee", "franchisor", "territory", "royalty"] },
+  { id: "distribution-agreement",label: "Distribution Agreement",            keywords: ["distribution", "distribution agreement", "distributor", "reseller", "channel", "wholesale"] },
+  { id: "merger-acquisition",    label: "Share Purchase / M&A Agreement",    keywords: ["merger", "acquisition", "m&a", "buyout", "takeover", "due diligence", "spa", "share purchase agreement", "share purchase"] },
   { id: "power-of-attorney",     label: "Power of Attorney",                 keywords: ["power of attorney", "poa", "authorize", "representative", "proxy"] },
-  { id: "terms-of-service",      label: "Terms of Service",                  keywords: ["terms of service", "tos", "terms and conditions", "user agreement", "acceptable use"] },
-  { id: "privacy-policy",        label: "Privacy Policy",                    keywords: ["privacy", "data protection", "personal data", "gdpr", "cookies", "consent"] },
-  // ─── 7 new document types ───
-  { id: "purchase-order",        label: "Purchase Order",                    keywords: ["purchase order", "purchase", "order", "invoice", "procurement order"] },
-  { id: "mutual-nda",            label: "Mutual Confidentiality Agreement",  keywords: ["mutual nda", "mutual confidentiality", "bilateral nda", "two-way nda"] },
-  { id: "contractor-agreement",  label: "Independent Contractor Agreement",  keywords: ["contractor", "independent contractor", "freelancer", "1099", "freelance"] },
-  { id: "msa",                   label: "Master Service Agreement",          keywords: ["master service", "msa", "framework agreement", "umbrella agreement"] },
-  { id: "affiliate-agreement",   label: "Affiliate/Referral Agreement",      keywords: ["affiliate", "referral", "commission", "partner program", "referral fee"] },
-  { id: "licensing-agreement",   label: "General Licensing Agreement",       keywords: ["licensor", "licensee", "patent", "trademark", "royalty license", "ip license"] },
-  { id: "bill-of-sale",          label: "Bill of Sale / Asset Purchase",     keywords: ["bill of sale", "asset purchase", "transfer of ownership", "sale deed"] },
+  { id: "terms-of-service",      label: "Terms of Service",                  keywords: ["terms of service", "tos", "terms and conditions", "t&c", "t and c", "terms & conditions", "user agreement", "acceptable use"] },
+  { id: "privacy-policy",        label: "Privacy Policy",                    keywords: ["privacy policy", "privacy", "personal data", "cookies", "consent", "cookie policy"] },
+  { id: "purchase-order",        label: "Purchase Order",                    keywords: ["purchase order", "purchase", "order", "invoice", "procurement order", "po"] },
+  { id: "mutual-nda",            label: "Mutual Confidentiality Agreement",  keywords: ["mutual nda", "mutual confidentiality", "bilateral nda", "two-way nda", "mutual non-disclosure"] },
+  { id: "contractor-agreement",  label: "Independent Contractor Agreement",  keywords: ["contractor", "independent contractor", "contractor agreement", "freelancer", "1099", "freelance"] },
+  { id: "msa",                   label: "Master Service Agreement",          keywords: ["master service agreement", "master service", "msa", "framework agreement", "umbrella agreement"] },
+  { id: "affiliate-agreement",   label: "Affiliate/Referral Agreement",      keywords: ["affiliate", "referral", "referral agreement", "commission", "partner program", "referral fee"] },
+  { id: "licensing-agreement",   label: "General Licensing Agreement",       keywords: ["licensor", "licensee", "licensing agreement", "patent license", "trademark license", "royalty license", "ip license"] },
+  { id: "bill-of-sale",          label: "Bill of Sale / Asset Purchase",     keywords: ["bill of sale", "asset purchase", "asset purchase agreement", "apa", "transfer of ownership", "sale deed"] },
+  // ─── 4 new document types ───
+  { id: "mou",                   label: "Memorandum of Understanding",       keywords: ["memorandum of understanding", "mou", "memo of understanding"] },
+  { id: "loi",                   label: "Letter of Intent",                  keywords: ["letter of intent", "loi", "intent letter", "expression of interest", "eoi"] },
+  { id: "sla",                   label: "Service Level Agreement",           keywords: ["service level agreement", "sla", "service level", "uptime guarantee", "availability guarantee"] },
+  { id: "sow",                   label: "Statement of Work",                 keywords: ["statement of work", "sow", "work order", "scope of work", "project scope"] },
 ];
 
 // ─── Templates with clause bindings ──────────────────────────────────────────
 
 export const TEMPLATES = [
   { id: "t1",  name: "Vendor Service Agreement",         docTypes: ["vendor-agreement"],       keywords: ["vendor", "service", "deliverable", "sow"],
-    requiredClauses: ["c1","c2","c5","c6","c11"],       optionalClauses: ["c3","c7","c8","c10","c12","c15","c20"] },
+    requiredClauses: ["c1","c2","c5","c6","c11","c21"],  optionalClauses: ["c3","c7","c8","c10","c12","c15","c19","c20","c22","c26"] },
   { id: "t2",  name: "Non-Disclosure Agreement",         docTypes: ["nda"],                    keywords: ["confidential", "disclosure", "proprietary"],
-    requiredClauses: ["c1","c5","c11"],                  optionalClauses: ["c13","c18"] },
+    requiredClauses: ["c1","c5","c11","c25"],             optionalClauses: ["c13","c18","c24"] },
   { id: "t3",  name: "Employment Agreement",              docTypes: ["employment-agreement"],   keywords: ["employment", "compensation", "benefits", "termination"],
-    requiredClauses: ["c1","c5","c7","c9","c11","c17"],  optionalClauses: ["c18","c13","c14","c16"] },
+    requiredClauses: ["c1","c5","c7","c9","c11","c17"],  optionalClauses: ["c18","c13","c14","c16","c22","c24"] },
   { id: "t4",  name: "Shareholder Agreement",             docTypes: ["shareholder-agreement"],  keywords: ["shares", "voting", "board", "dividend"],
-    requiredClauses: ["c5","c10","c11","c19"],           optionalClauses: ["c4","c1","c13","c15"] },
+    requiredClauses: ["c5","c10","c11","c19"],           optionalClauses: ["c4","c1","c13","c15","c14","c16","c24"] },
   { id: "t5",  name: "Lease Agreement",                   docTypes: ["lease-agreement"],        keywords: ["lease", "rent", "premises", "maintenance"],
-    requiredClauses: ["c5","c6","c11"],                  optionalClauses: ["c2","c4","c8","c12","c15","c20"] },
+    requiredClauses: ["c5","c6","c11"],                  optionalClauses: ["c2","c4","c8","c12","c15","c16","c20","c13","c14","c24"] },
   { id: "t6",  name: "Consulting Agreement",              docTypes: ["consulting-agreement"],   keywords: ["consulting", "scope", "deliverable", "hourly"],
-    requiredClauses: ["c1","c5","c6","c7","c11"],        optionalClauses: ["c2","c3","c9","c18","c20"] },
+    requiredClauses: ["c1","c5","c6","c7","c11","c21"],  optionalClauses: ["c2","c3","c9","c18","c20","c22","c26","c24"] },
   { id: "t7",  name: "Software License Agreement",        docTypes: ["software-license"],       keywords: ["license", "software", "subscription", "support"],
-    requiredClauses: ["c3","c5","c7","c11","c17"],       optionalClauses: ["c1","c2","c12","c14"] },
+    requiredClauses: ["c3","c5","c7","c11","c17"],       optionalClauses: ["c1","c2","c10","c12","c14","c22","c23","c24"] },
   { id: "t8",  name: "Partnership Agreement",             docTypes: ["partnership-agreement"],  keywords: ["partnership", "profit", "contribution", "management"],
-    requiredClauses: ["c5","c9","c11","c19"],            optionalClauses: ["c1","c8","c13","c15"] },
+    requiredClauses: ["c5","c9","c11","c19"],            optionalClauses: ["c1","c8","c13","c15","c14","c16","c24"] },
   { id: "t9",  name: "Loan Agreement",                    docTypes: ["loan-agreement"],         keywords: ["loan", "interest", "repayment", "collateral"],
-    requiredClauses: ["c5","c6","c10","c11"],            optionalClauses: ["c4","c15","c19"] },
+    requiredClauses: ["c5","c6","c10","c11"],            optionalClauses: ["c4","c15","c19","c8","c14","c16","c24"] },
   { id: "t10", name: "Franchise Agreement",                docTypes: ["franchise-agreement"],    keywords: ["franchise", "territory", "royalty", "training"],
-    requiredClauses: ["c1","c2","c5","c6","c9","c11"],   optionalClauses: ["c4","c7","c10","c20"] },
+    requiredClauses: ["c1","c2","c5","c6","c9","c11"],   optionalClauses: ["c4","c7","c10","c20","c22","c23","c27","c13","c15","c17","c24","c25"] },
   { id: "t11", name: "Distribution Agreement",            docTypes: ["distribution-agreement"], keywords: ["distribution", "territory", "pricing", "inventory"],
-    requiredClauses: ["c1","c2","c5","c6","c11"],        optionalClauses: ["c3","c4","c8","c12"] },
+    requiredClauses: ["c1","c2","c5","c6","c11"],        optionalClauses: ["c3","c4","c8","c12","c13","c15","c17","c19","c20","c22","c26","c24"] },
   { id: "t12", name: "Terms of Service",                  docTypes: ["terms-of-service"],       keywords: ["terms", "user", "account", "liability"],
-    requiredClauses: ["c3","c5","c11","c17"],            optionalClauses: ["c14","c19"] },
+    requiredClauses: ["c3","c5","c11","c17"],            optionalClauses: ["c14","c19","c24"] },
   { id: "t13", name: "Privacy Policy",                    docTypes: ["privacy-policy"],         keywords: ["privacy", "data", "collection", "consent"],
     requiredClauses: ["c17","c5"],                       optionalClauses: ["c14"] },
-  // ─── 7 new templates ───
   { id: "t14", name: "Purchase Order",                    docTypes: ["purchase-order"],          keywords: ["purchase", "order", "invoice", "delivery"],
     requiredClauses: ["c5","c6"],                        optionalClauses: ["c3","c10","c11"] },
   { id: "t15", name: "Mutual Confidentiality Agreement",  docTypes: ["mutual-nda"],             keywords: ["mutual", "bilateral", "two-way", "confidential"],
-    requiredClauses: ["c1","c5","c11"],                  optionalClauses: ["c13","c18"] },
+    requiredClauses: ["c1","c5","c11","c25"],            optionalClauses: ["c13","c18","c24"] },
   { id: "t16", name: "Independent Contractor Agreement",  docTypes: ["contractor-agreement"],   keywords: ["contractor", "freelance", "independent", "scope"],
-    requiredClauses: ["c1","c5","c6","c7","c11"],        optionalClauses: ["c2","c9","c18"] },
+    requiredClauses: ["c1","c5","c6","c7","c11","c21"],  optionalClauses: ["c2","c3","c9","c18","c22","c26","c24"] },
   { id: "t17", name: "Master Service Agreement",          docTypes: ["msa"],                    keywords: ["master", "framework", "umbrella", "ongoing"],
-    requiredClauses: ["c1","c3","c5","c6","c7","c11"],   optionalClauses: ["c2","c8","c12","c17","c19"] },
+    requiredClauses: ["c1","c3","c5","c6","c7","c11","c21"], optionalClauses: ["c2","c8","c12","c17","c19","c22","c23","c26","c27","c24","c25"] },
   { id: "t18", name: "Affiliate/Referral Agreement",      docTypes: ["affiliate-agreement"],    keywords: ["affiliate", "referral", "commission", "program"],
-    requiredClauses: ["c5","c6","c7","c11"],             optionalClauses: ["c1","c9","c10"] },
+    requiredClauses: ["c5","c6","c7","c11"],             optionalClauses: ["c1","c9","c10","c15","c22","c24"] },
   { id: "t19", name: "General Licensing Agreement",       docTypes: ["licensing-agreement"],    keywords: ["licensor", "licensee", "patent", "trademark"],
-    requiredClauses: ["c5","c6","c7","c11"],             optionalClauses: ["c1","c2","c3","c19"] },
+    requiredClauses: ["c5","c6","c7","c11"],             optionalClauses: ["c1","c2","c3","c19","c12","c13","c23","c24","c25"] },
   { id: "t20", name: "Bill of Sale / Asset Purchase",     docTypes: ["bill-of-sale"],           keywords: ["sale", "asset", "transfer", "ownership"],
     requiredClauses: ["c5","c10"],                       optionalClauses: ["c2","c11","c13"] },
+  { id: "t25", name: "Share Purchase / M&A Agreement",    docTypes: ["merger-acquisition"],     keywords: ["share purchase", "acquisition", "merger", "buyout", "takeover", "spa"],
+    requiredClauses: ["c5","c10","c11","c1"],             optionalClauses: ["c2","c3","c7","c9","c19","c13","c24"] },
+  // ─── 4 new templates ───
+  { id: "t21", name: "Memorandum of Understanding",       docTypes: ["mou"],                    keywords: ["memorandum", "understanding", "pre-contractual", "non-binding"],
+    requiredClauses: ["c5","c11"],                       optionalClauses: ["c1","c13","c15","c19","c24"] },
+  { id: "t22", name: "Letter of Intent",                  docTypes: ["loi"],                    keywords: ["intent", "letter", "preliminary", "non-binding"],
+    requiredClauses: ["c5","c1"],                        optionalClauses: ["c11","c13","c15","c24"] },
+  { id: "t23", name: "Service Level Agreement",           docTypes: ["sla"],                    keywords: ["service level", "uptime", "sla", "performance"],
+    requiredClauses: ["c5","c6","c11","c21"],            optionalClauses: ["c2","c3","c8","c15","c19","c24"] },
+  { id: "t24", name: "Statement of Work",                 docTypes: ["sow"],                    keywords: ["scope", "deliverable", "milestone", "project"],
+    requiredClauses: ["c5","c6","c21"],                  optionalClauses: ["c1","c3","c7","c11","c15","c24"] },
 ];
 
-// ─── Clauses with relevance mapping ──────────────────────────────────────────
+// ─── Clauses with relevance mapping (27 clauses) ────────────────────────────
 
 export const CLAUSES = [
   { id: "c1",  label: "Confidentiality",              weight: 95,
-    keywords: ["confidential", "secrecy", "secret", "non-disclosure", "proprietary information", "nda"],
-    applicableTo: ["vendor-agreement", "nda", "mutual-nda", "employment-agreement", "consulting-agreement", "contractor-agreement", "software-license", "partnership-agreement", "franchise-agreement", "distribution-agreement", "merger-acquisition", "msa", "licensing-agreement"] },
+    keywords: ["confidential", "confidentiality", "secrecy", "secret", "non-disclosure", "proprietary information", "nda"],
+    applicableTo: ["vendor-agreement", "nda", "mutual-nda", "employment-agreement", "consulting-agreement", "contractor-agreement", "software-license", "partnership-agreement", "franchise-agreement", "distribution-agreement", "merger-acquisition", "msa", "licensing-agreement", "mou", "loi"] },
   { id: "c2",  label: "Indemnity",                    weight: 90,
-    keywords: ["indemnity", "indemnify", "indemnification", "hold harmless"],
-    applicableTo: ["vendor-agreement", "consulting-agreement", "contractor-agreement", "software-license", "lease-agreement", "distribution-agreement", "franchise-agreement", "msa", "licensing-agreement"] },
+    keywords: ["indemnity", "indemnify", "indemnification", "hold harmless", "indemnification clause"],
+    applicableTo: ["vendor-agreement", "consulting-agreement", "contractor-agreement", "software-license", "lease-agreement", "distribution-agreement", "franchise-agreement", "msa", "licensing-agreement", "sla"] },
   { id: "c3",  label: "Limitation of Liability",      weight: 88,
-    keywords: ["limitation of liability", "limit liability", "liability cap", "cap on damages", "liability limit"],
-    applicableTo: ["vendor-agreement", "software-license", "consulting-agreement", "contractor-agreement", "terms-of-service", "distribution-agreement", "msa", "licensing-agreement"] },
+    keywords: ["limitation of liability", "limit liability", "liability cap", "cap on damages", "liability limit", "lol"],
+    applicableTo: ["vendor-agreement", "software-license", "consulting-agreement", "contractor-agreement", "terms-of-service", "distribution-agreement", "msa", "licensing-agreement", "sla"] },
   { id: "c4",  label: "Arbitration",                  weight: 82,
-    keywords: ["arbitration", "arbitrate", "arbitral", "arbitrator"],
-    applicableTo: ["vendor-agreement", "shareholder-agreement", "partnership-agreement", "franchise-agreement", "distribution-agreement", "lease-agreement"] },
+    keywords: ["arbitration", "arbitrate", "arbitral", "arbitrator", "arbitration clause"],
+    applicableTo: ["vendor-agreement", "shareholder-agreement", "partnership-agreement", "franchise-agreement", "distribution-agreement", "lease-agreement", "msa", "consulting-agreement", "contractor-agreement", "licensing-agreement"] },
   { id: "c5",  label: "Governing Law",                weight: 85,
-    keywords: ["governing law", "applicable law", "choice of law", "jurisdiction"],
-    applicableTo: ["vendor-agreement", "nda", "mutual-nda", "employment-agreement", "consulting-agreement", "contractor-agreement", "software-license", "shareholder-agreement", "partnership-agreement", "lease-agreement", "loan-agreement", "franchise-agreement", "distribution-agreement", "msa", "affiliate-agreement", "licensing-agreement", "purchase-order", "bill-of-sale", "terms-of-service", "privacy-policy"] },
+    keywords: ["governing law", "applicable law", "choice of law", "jurisdiction", "governed by"],
+    applicableTo: ["vendor-agreement", "nda", "mutual-nda", "employment-agreement", "consulting-agreement", "contractor-agreement", "software-license", "shareholder-agreement", "partnership-agreement", "lease-agreement", "loan-agreement", "franchise-agreement", "distribution-agreement", "msa", "affiliate-agreement", "licensing-agreement", "purchase-order", "bill-of-sale", "terms-of-service", "privacy-policy", "mou", "loi", "sla", "sow"] },
   { id: "c6",  label: "Payment Terms",                weight: 92,
-    keywords: ["payment", "compensation", "fee", "pricing", "invoice", "billing", "remuneration"],
-    applicableTo: ["vendor-agreement", "consulting-agreement", "contractor-agreement", "lease-agreement", "loan-agreement", "franchise-agreement", "distribution-agreement", "msa", "affiliate-agreement", "licensing-agreement", "purchase-order"] },
+    keywords: ["payment", "compensation", "fee", "pricing", "invoice", "billing", "remuneration", "payment terms"],
+    applicableTo: ["vendor-agreement", "consulting-agreement", "contractor-agreement", "lease-agreement", "loan-agreement", "franchise-agreement", "distribution-agreement", "msa", "affiliate-agreement", "licensing-agreement", "purchase-order", "sla", "sow"] },
   { id: "c7",  label: "Intellectual Property",        weight: 87,
-    keywords: ["intellectual property", "ip rights", "patent", "trademark", "copyright", "trade secret", "ip ownership"],
+    keywords: ["intellectual property", "ip rights", "ip", "patent", "trademark", "copyright", "trade secret", "ip ownership", "ip clause"],
     applicableTo: ["vendor-agreement", "employment-agreement", "consulting-agreement", "contractor-agreement", "software-license", "partnership-agreement", "franchise-agreement", "msa", "affiliate-agreement", "licensing-agreement"] },
   { id: "c8",  label: "Force Majeure",                weight: 75,
-    keywords: ["force majeure", "act of god", "unforeseen circumstances", "natural disaster"],
-    applicableTo: ["vendor-agreement", "lease-agreement", "distribution-agreement", "franchise-agreement", "consulting-agreement", "contractor-agreement", "msa"] },
+    keywords: ["force majeure", "fm", "act of god", "unforeseen circumstances", "natural disaster", "pandemic"],
+    applicableTo: ["vendor-agreement", "lease-agreement", "distribution-agreement", "franchise-agreement", "consulting-agreement", "contractor-agreement", "msa", "loan-agreement", "licensing-agreement", "partnership-agreement", "sla"] },
   { id: "c9",  label: "Non-Compete",                  weight: 80,
-    keywords: ["non-compete", "non compete", "noncompete", "restrictive covenant", "competition restriction"],
+    keywords: ["non-compete", "non compete", "noncompete", "nca", "non-competition", "restrictive covenant", "competition restriction"],
     applicableTo: ["employment-agreement", "partnership-agreement", "franchise-agreement", "consulting-agreement", "contractor-agreement", "merger-acquisition", "affiliate-agreement"] },
   { id: "c10", label: "Representations & Warranties", weight: 86,
-    keywords: ["representation", "warranty", "warranties", "represent and warrant", "guarantees"],
-    applicableTo: ["vendor-agreement", "shareholder-agreement", "merger-acquisition", "loan-agreement", "franchise-agreement", "bill-of-sale", "purchase-order", "licensing-agreement"] },
+    keywords: ["representation", "warranty", "warranties", "represent and warrant", "guarantees", "r&w", "reps and warranties", "reps & warranties"],
+    applicableTo: ["vendor-agreement", "shareholder-agreement", "merger-acquisition", "loan-agreement", "franchise-agreement", "bill-of-sale", "purchase-order", "licensing-agreement", "consulting-agreement", "contractor-agreement", "msa", "software-license"] },
   { id: "c11", label: "Termination",                  weight: 93,
-    keywords: ["termination", "terminate", "cancellation", "end of agreement", "expiry"],
-    applicableTo: ["vendor-agreement", "nda", "mutual-nda", "employment-agreement", "consulting-agreement", "contractor-agreement", "software-license", "lease-agreement", "partnership-agreement", "franchise-agreement", "distribution-agreement", "msa", "affiliate-agreement", "licensing-agreement"] },
+    keywords: ["termination", "terminate", "cancellation", "end of agreement", "expiry", "termination clause"],
+    applicableTo: ["vendor-agreement", "nda", "mutual-nda", "employment-agreement", "consulting-agreement", "contractor-agreement", "software-license", "lease-agreement", "partnership-agreement", "franchise-agreement", "distribution-agreement", "msa", "affiliate-agreement", "licensing-agreement", "sla", "sow"] },
   { id: "c12", label: "Assignment",                   weight: 70,
-    keywords: ["assignment", "assign", "transfer rights", "assignability"],
-    applicableTo: ["vendor-agreement", "lease-agreement", "software-license", "distribution-agreement", "msa"] },
+    keywords: ["assignment", "assign", "transfer rights", "assignability", "assignment clause"],
+    applicableTo: ["vendor-agreement", "lease-agreement", "software-license", "distribution-agreement", "msa", "consulting-agreement", "contractor-agreement", "partnership-agreement", "franchise-agreement", "licensing-agreement"] },
   { id: "c13", label: "Entire Agreement",             weight: 65,
     keywords: ["entire agreement", "whole agreement", "integration clause", "merger clause"],
-    applicableTo: ["vendor-agreement", "nda", "mutual-nda", "employment-agreement", "consulting-agreement", "contractor-agreement", "software-license", "shareholder-agreement", "partnership-agreement", "bill-of-sale"] },
+    applicableTo: ["vendor-agreement", "nda", "mutual-nda", "employment-agreement", "consulting-agreement", "contractor-agreement", "software-license", "shareholder-agreement", "partnership-agreement", "bill-of-sale", "franchise-agreement", "distribution-agreement", "lease-agreement", "msa", "licensing-agreement", "mou", "loi"] },
   { id: "c14", label: "Severability",                 weight: 60,
-    keywords: ["severability", "severable", "invalid provision"],
-    applicableTo: ["vendor-agreement", "employment-agreement", "software-license", "terms-of-service", "privacy-policy"] },
+    keywords: ["severability", "severable", "invalid provision", "severability clause"],
+    applicableTo: ["vendor-agreement", "employment-agreement", "software-license", "terms-of-service", "privacy-policy", "consulting-agreement", "contractor-agreement", "shareholder-agreement", "partnership-agreement", "lease-agreement", "loan-agreement", "franchise-agreement", "distribution-agreement", "msa", "affiliate-agreement", "licensing-agreement", "mou", "sla"] },
   { id: "c15", label: "Notice",                       weight: 68,
-    keywords: ["notice", "notification", "written notice", "notice period"],
-    applicableTo: ["vendor-agreement", "lease-agreement", "shareholder-agreement", "partnership-agreement", "loan-agreement", "msa"] },
+    keywords: ["notice", "notification", "written notice", "notice period", "notice clause"],
+    applicableTo: ["vendor-agreement", "lease-agreement", "shareholder-agreement", "partnership-agreement", "loan-agreement", "msa", "consulting-agreement", "contractor-agreement", "distribution-agreement", "franchise-agreement", "employment-agreement", "affiliate-agreement", "licensing-agreement", "sla"] },
   { id: "c16", label: "Waiver",                       weight: 55,
     keywords: ["waiver", "waive", "forgo rights"],
-    applicableTo: ["vendor-agreement", "employment-agreement", "software-license"] },
+    applicableTo: ["vendor-agreement", "employment-agreement", "software-license", "consulting-agreement", "contractor-agreement", "shareholder-agreement", "partnership-agreement", "lease-agreement", "loan-agreement", "franchise-agreement", "distribution-agreement", "msa", "affiliate-agreement", "licensing-agreement"] },
   { id: "c17", label: "Data Protection",              weight: 89,
-    keywords: ["data protection", "personal data", "privacy", "gdpr", "data processing", "data security"],
-    applicableTo: ["software-license", "employment-agreement", "vendor-agreement", "terms-of-service", "privacy-policy", "msa", "contractor-agreement"] },
+    keywords: ["data protection", "personal data", "privacy", "gdpr", "data processing", "data security", "dpa", "data protection agreement"],
+    applicableTo: ["software-license", "employment-agreement", "vendor-agreement", "terms-of-service", "privacy-policy", "msa", "contractor-agreement", "distribution-agreement", "franchise-agreement", "affiliate-agreement", "sla"] },
   { id: "c18", label: "Non-Solicitation",             weight: 78,
-    keywords: ["non-solicitation", "non solicitation", "nonsolicitation", "no poach", "employee solicitation"],
+    keywords: ["non-solicitation", "non solicitation", "nonsolicitation", "nsa", "no-solicit", "no poach", "employee solicitation"],
     applicableTo: ["employment-agreement", "consulting-agreement", "contractor-agreement", "nda", "mutual-nda", "merger-acquisition"] },
   { id: "c19", label: "Dispute Resolution",           weight: 84,
-    keywords: ["dispute resolution", "dispute", "mediation", "litigation", "court proceedings"],
-    applicableTo: ["shareholder-agreement", "partnership-agreement", "franchise-agreement", "loan-agreement", "merger-acquisition", "msa", "licensing-agreement"] },
+    keywords: ["dispute resolution", "dispute", "mediation", "litigation", "court proceedings", "dispute clause"],
+    applicableTo: ["shareholder-agreement", "partnership-agreement", "franchise-agreement", "loan-agreement", "merger-acquisition", "msa", "licensing-agreement", "vendor-agreement", "consulting-agreement", "contractor-agreement", "distribution-agreement", "sla"] },
   { id: "c20", label: "Insurance",                    weight: 72,
-    keywords: ["insurance", "coverage", "policy", "insured", "liability insurance"],
-    applicableTo: ["vendor-agreement", "consulting-agreement", "contractor-agreement", "lease-agreement", "franchise-agreement"] },
+    keywords: ["insurance", "coverage", "insured", "liability insurance", "insurance clause"],
+    applicableTo: ["vendor-agreement", "consulting-agreement", "contractor-agreement", "lease-agreement", "franchise-agreement", "distribution-agreement", "msa"] },
+  // ─── 7 new clauses ───
+  { id: "c21", label: "Scope of Work / Services",     weight: 91,
+    keywords: ["scope of work", "scope of services", "services description", "deliverables", "work scope", "sow", "service scope"],
+    applicableTo: ["vendor-agreement", "consulting-agreement", "contractor-agreement", "msa", "sow", "sla"] },
+  { id: "c22", label: "Compliance with Laws",         weight: 78,
+    keywords: ["compliance", "comply with laws", "legal compliance", "regulatory compliance", "applicable laws", "compliance clause"],
+    applicableTo: ["vendor-agreement", "employment-agreement", "consulting-agreement", "contractor-agreement", "franchise-agreement", "distribution-agreement", "msa", "software-license", "affiliate-agreement", "licensing-agreement"] },
+  { id: "c23", label: "Audit Rights",                 weight: 72,
+    keywords: ["audit", "audit rights", "right to audit", "inspection", "books and records", "audit clause"],
+    applicableTo: ["vendor-agreement", "franchise-agreement", "software-license", "msa", "distribution-agreement", "licensing-agreement"] },
+  { id: "c24", label: "Amendment / Modification",     weight: 62,
+    keywords: ["amendment", "modification", "amend", "modify", "variation", "amendment clause"],
+    applicableTo: ["vendor-agreement", "nda", "mutual-nda", "employment-agreement", "consulting-agreement", "contractor-agreement", "software-license", "shareholder-agreement", "partnership-agreement", "lease-agreement", "loan-agreement", "franchise-agreement", "distribution-agreement", "msa", "affiliate-agreement", "licensing-agreement", "mou", "loi", "sla", "sow"] },
+  { id: "c25", label: "Survival",                     weight: 70,
+    keywords: ["survival", "surviving provisions", "post-termination", "survive termination", "survival clause"],
+    applicableTo: ["nda", "mutual-nda", "employment-agreement", "consulting-agreement", "contractor-agreement", "vendor-agreement", "msa", "licensing-agreement", "franchise-agreement"] },
+  { id: "c26", label: "Subcontracting",               weight: 68,
+    keywords: ["subcontract", "subcontracting", "subcontractor", "sub-contract", "delegate"],
+    applicableTo: ["vendor-agreement", "consulting-agreement", "contractor-agreement", "msa", "distribution-agreement"] },
+  { id: "c27", label: "Anti-Bribery / Anti-Corruption", weight: 76,
+    keywords: ["anti-bribery", "anti-corruption", "bribery", "corruption", "fcpa", "uk bribery act", "anti-corruption clause"],
+    applicableTo: ["vendor-agreement", "consulting-agreement", "contractor-agreement", "distribution-agreement", "franchise-agreement", "msa", "affiliate-agreement"] },
 ];
 
 // ─── Clause Relationships ────────────────────────────────────────────────────
@@ -161,6 +239,9 @@ export const CLAUSE_RELATIONSHIPS = [
   { type: "synergy",  clauses: ["c2", "c3"],  reason: "Indemnity and Limitation of Liability often appear together" },
   { type: "synergy",  clauses: ["c1", "c17"], reason: "Confidentiality and Data Protection reinforce each other" },
   { type: "implies",  clauses: ["c17", "c1"], reason: "Data Protection typically requires Confidentiality" },
+  { type: "synergy",  clauses: ["c21", "c6"], reason: "Scope of Work and Payment Terms are typically paired" },
+  { type: "synergy",  clauses: ["c22", "c27"], reason: "Compliance with Laws and Anti-Bribery reinforce each other" },
+  { type: "synergy",  clauses: ["c11", "c25"], reason: "Termination and Survival provisions are typically paired" },
 ];
 
 // ─── Rulebooks with jurisdiction/industry mapping + clause mandates ──────────
@@ -168,12 +249,12 @@ export const CLAUSE_RELATIONSHIPS = [
 export const RULEBOOKS = [
   { id: "r1", name: "Corporate Contract Policy",       keywords: ["corporate policy", "company policy", "internal policy"],  jurisdictions: ["*"],     industries: ["*"],          docTypes: ["vendor-agreement", "consulting-agreement", "contractor-agreement", "distribution-agreement", "msa"],  mandatoryClauses: [] },
   { id: "r2", name: "Standard Legal Guidelines",       keywords: ["standard guidelines", "legal standards", "best practices"],  jurisdictions: ["*"],     industries: ["*"],          docTypes: ["*"],  mandatoryClauses: [] },
-  { id: "r3", name: "GDPR Compliance Rules",           keywords: ["gdpr", "data protection regulation", "european privacy", "gdpr compliant", "gdpr compliance"],  jurisdictions: ["eu", "uk", "germany", "france"],  industries: ["*"],  docTypes: ["privacy-policy", "terms-of-service", "software-license", "employment-agreement", "msa"],  mandatoryClauses: ["c17"] },
-  { id: "r4", name: "Arbitration-First Policy",        keywords: ["arbitration first", "arbitration policy", "mandatory arbitration"],  jurisdictions: ["*"],     industries: ["*"],          docTypes: ["vendor-agreement", "shareholder-agreement", "partnership-agreement", "franchise-agreement"],  mandatoryClauses: ["c4"] },
+  { id: "r3", name: "GDPR Compliance Rules",           keywords: ["gdpr", "data protection regulation", "european privacy", "gdpr compliant", "gdpr compliance"],  jurisdictions: ["eu", "uk", "germany", "france"],  industries: ["*"],  docTypes: ["privacy-policy", "terms-of-service", "software-license", "employment-agreement", "msa", "vendor-agreement", "contractor-agreement", "consulting-agreement", "distribution-agreement", "sla"],  mandatoryClauses: ["c17"] },
+  { id: "r4", name: "Arbitration-First Policy",        keywords: ["arbitration first", "arbitration policy", "mandatory arbitration"],  jurisdictions: ["*"],     industries: ["*"],          docTypes: ["vendor-agreement", "shareholder-agreement", "partnership-agreement", "franchise-agreement", "msa", "consulting-agreement"],  mandatoryClauses: ["c4"] },
   { id: "r5", name: "Indian Contract Act Compliance",  keywords: ["indian contract act", "indian law", "india compliance"],  jurisdictions: ["india"], industries: ["*"],          docTypes: ["*"],  mandatoryClauses: [] },
-  { id: "r6", name: "ISO Legal Standards",             keywords: ["iso", "iso standard", "iso compliance", "iso certified"],  jurisdictions: ["*"],     industries: ["technology", "manufacturing", "healthcare"], docTypes: ["vendor-agreement", "software-license", "msa"],  mandatoryClauses: [] },
+  { id: "r6", name: "ISO Legal Standards",             keywords: ["iso", "iso standard", "iso compliance", "iso certified"],  jurisdictions: ["*"],     industries: ["technology", "manufacturing", "healthcare"], docTypes: ["vendor-agreement", "software-license", "msa", "sla"],  mandatoryClauses: [] },
   { id: "r7", name: "US Employment Law Compliance",    keywords: ["us employment law", "american labor law", "flsa", "at-will employment"],  jurisdictions: ["us", "usa", "united states"],  industries: ["*"],  docTypes: ["employment-agreement", "contractor-agreement"],  mandatoryClauses: ["c9", "c18"] },
-  { id: "r8", name: "HIPAA Compliance Rules",          keywords: ["hipaa", "health data", "patient privacy", "hipaa compliant", "hipaa compliance", "phi"],  jurisdictions: ["us", "usa"],                   industries: ["healthcare", "health", "medical"], docTypes: ["vendor-agreement", "software-license", "privacy-policy", "msa"],  mandatoryClauses: ["c1", "c17"] },
+  { id: "r8", name: "HIPAA Compliance Rules",          keywords: ["hipaa", "health data", "patient privacy", "hipaa compliant", "hipaa compliance", "phi"],  jurisdictions: ["us", "usa"],                   industries: ["healthcare", "health", "medical"], docTypes: ["vendor-agreement", "software-license", "privacy-policy", "msa", "sla"],  mandatoryClauses: ["c1", "c17"] },
 ];
 
 // ─── Jurisdiction keywords ─────────────────────────────────────────────────
@@ -210,16 +291,35 @@ const INDUSTRY_KEYWORDS = {
 // ─── Scoring Functions ─────────────────────────────────────────────────────
 
 /**
- * Detect document type from intent text using keyword scoring with word boundaries.
- * Primary keywords (first in list) score higher for better discrimination.
+ * Detect document type from intent text using context-aware keyword scoring.
+ * Uses intent-phrase extraction, clause-context filtering, and category penalties
+ * to prevent cross-contamination (e.g. "data protection" boosting Privacy Policy
+ * when used as a clause request in a Vendor Agreement prompt).
  * Returns sorted array of { id, label, score }.
  */
 export function detectDocumentType(intentText) {
   const lower = intentText.toLowerCase();
+  const intentPhrase = extractIntentPhrase(lower);
+  const hasAgreementWord = /\b(agreement|contract)\b/.test(lower);
+  const hasPolicyWord = /\b(policy|policies)\b/.test(lower);
+
   const scores = DOCUMENT_TYPES.map(dt => {
     let score = 0;
+
+    // Phase 1: Intent phrase matching (strongest signal — "draft a [X]")
+    if (intentPhrase) {
+      for (const kw of dt.keywords) {
+        if (kwMatch(intentPhrase, kw)) {
+          score += kw.includes(" ") ? 30 : 25;
+        }
+      }
+    }
+
+    // Phase 2: Full-text keyword matching with clause-context filtering
     dt.keywords.forEach((kw, i) => {
       if (kwMatch(lower, kw)) {
+        // Skip keywords that appear in clause-requesting context
+        if (isClauseContext(lower, kw)) return;
         if (kw.includes(" ")) {
           score += 18; // Multi-word phrases are highly discriminative
         } else if (i === 0) {
@@ -229,6 +329,13 @@ export function detectDocumentType(intentText) {
         }
       }
     });
+
+    // Phase 3: Category penalty for cross-category contamination
+    const cat = DOCUMENT_CATEGORIES[dt.id];
+    if (hasAgreementWord && cat === "policy") score -= 12;
+    if (hasAgreementWord && cat === "standalone") score -= 8;
+    if (hasPolicyWord && cat === "agreement") score -= 5;
+
     return { id: dt.id, label: dt.label, score };
   });
   return scores.filter(s => s.score > 0).sort((a, b) => b.score - a.score);

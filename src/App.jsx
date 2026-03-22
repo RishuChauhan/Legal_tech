@@ -213,13 +213,18 @@ export default function App() {
           daysRemaining={TRIAL_DAYS_REMAINING}
           onUpgradeClick={() => goSettings("billing")}
         />
-        <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+        <div style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative" }}>
           <SettingsSidebar
             activeSub={settingsTab}
+            collapsed
             onBack={() => setPage("app")}
             onNav={(id) => { setSettingsTab(id); setSettingsContent(id); }}
           />
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <div style={{
+            flex: 1, display: "flex", flexDirection: "column", overflow: "hidden",
+            marginLeft: 56,
+            transition: "margin-left 250ms cubic-bezier(0.4, 0, 0.2, 1)",
+          }}>
             {settingsContent === "checkout"
               ? <CheckoutPage />
               : <BillingPage onChoose={() => setSettingsContent("checkout")} />
