@@ -80,7 +80,15 @@ export default function LandingPage({ onLogin }) {
 
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
 
-          {/* Animated "Start Free Trial" — only visible after scroll */}
+          <button onClick={onLogin} style={{
+            padding: "8px 18px", border: "1px solid #d4d0ca", borderRadius: 8,
+            background: "white", fontSize: 14, cursor: "pointer", color: "#333",
+            display: "flex", alignItems: "center", gap: 5,
+          }}>
+            Login <span style={{ fontSize: 16, lineHeight: 1 }}>›</span>
+          </button>
+
+          {/* Animated "Get a Demo" — slides in after scroll */}
           {scrolled && (
             <button
               className="nav-cta"
@@ -92,30 +100,9 @@ export default function LandingPage({ onLogin }) {
                 fontWeight: 600,
               }}
             >
-              Start Trial <span style={{ fontSize: 16, lineHeight: 1 }}>›</span>
+              Get a Demo <span style={{ fontSize: 16, lineHeight: 1 }}>›</span>
             </button>
           )}
-
-          <button onClick={onLogin} style={{
-            padding: "8px 18px", border: "1px solid #d4d0ca", borderRadius: 8,
-            background: "white", fontSize: 14, cursor: "pointer", color: "#333",
-            display: "flex", alignItems: "center", gap: 5,
-          }}>
-            Login <span style={{ fontSize: 16, lineHeight: 1 }}>›</span>
-          </button>
-
-          {/* "See how it works" fades out when trial CTA appears to avoid crowding */}
-          <button onClick={onLogin} style={{
-            padding: "8px 18px", borderRadius: 8,
-            background: scrolled ? "transparent" : "#111",
-            border: scrolled ? "1px solid #d4d0ca" : "none",
-            color: scrolled ? "#333" : "white",
-            fontSize: 14, cursor: "pointer",
-            display: "flex", alignItems: "center", gap: 5,
-            transition: "all 0.3s ease",
-          }}>
-            See how it works <span style={{ fontSize: 16, lineHeight: 1 }}>›</span>
-          </button>
 
         </div>
       </header>

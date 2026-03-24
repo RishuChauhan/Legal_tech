@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { analyseIntent } from "../services/nlp.js";
 import { generateDraftContent } from "../services/draftGenerator.js";
+import { referenceContextStore } from "./documents.js";
 
 const router = Router();
 
@@ -25,13 +26,19 @@ router.post("/analyse", async (req, res) => {
 // POST /api/draft/generate
 router.post("/generate", async (req, res) => {
   try {
-    const { documentType, template, clauses, rulebooks, referenceBlocks, instructions, entities } = req.body;
+    const { documentType, template, clauses, rulebooks, instructions, entities, tone, referenceFileId } = req.body;
     if (!documentType) {
       return res.status(400).json({ error: "documentType is required" });
     }
+
+    // Retrieve stored reference context if a file was uploaded
+    const referenceContext = referenceFileId
+      ? referenceContextStore.get(referenceFileId) || null
+      : null;
+
     const result = await generateDraftContent({
       documentType, template, clauses, rulebooks,
-      referenceBlocks, instructions, entities,
+      instructions, entities, tone, referenceContext,
     });
     res.json(result);
   } catch (err) {

@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { analyseIntent, generateDraft, parseDocument, suggestBlocks } from "../services/api.js";
-import ReferenceFileIntelligence from "../components/ReferenceFileIntelligence.jsx";
+import { analyseIntent, generateDraft, parseDocument } from "../services/api.js";
 
 // ─── State Machine ─────────────────────────────────────────────────────────
 // draftState controls UI rendering — no parallel boolean states.
@@ -353,9 +352,22 @@ function PipelineProgress({ draftState }) {
 
 // ─── DraftIntentInput ──────────────────────────────────────────────────────
 
-function DraftIntentInput({ onSubmit, loading }) {
+const TONE_OPTIONS = [
+  "Neutral legal",
+  "Concise",
+  "Detailed / Explanatory",
+  "Diplomatic",
+  "Firm",
+  "Formal / court-style",
+  "Layman-Friendly Legal",
+  "Objective / Impersonal",
+];
+
+function DraftIntentInput({ onSubmit, loading, tone, onToneChange }) {
   const [value, setValue] = useState("");
+  const [toneOpen, setToneOpen] = useState(false);
   const textareaRef = useRef(null);
+  const toneRef = useRef(null);
 
   // Auto-grow textarea
   useEffect(() => {
@@ -366,10 +378,20 @@ function DraftIntentInput({ onSubmit, loading }) {
     }
   }, [value]);
 
+  // Close tone dropdown on outside click
+  useEffect(() => {
+    if (!toneOpen) return;
+    const handler = (e) => {
+      if (toneRef.current && !toneRef.current.contains(e.target)) setToneOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [toneOpen]);
+
   return (
     <div style={{
       background: T.white, border: `1px solid ${T.border}`,
-      borderRadius: 12, overflow: "hidden",
+      borderRadius: 12, overflow: "visible",
       boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
     }}>
       <div style={{ padding: "18px 18px 10px" }}>
@@ -394,9 +416,63 @@ function DraftIntentInput({ onSubmit, loading }) {
       <div style={{
         borderTop: `1px solid ${T.border}`, padding: "10px 14px",
         display: "flex", justifyContent: "space-between", alignItems: "center",
-        background: T.bg,
+        background: T.bg, position: "relative",
       }}>
-        <span style={{ fontSize: 11.5, color: T.textLight }}>⌘ Enter to submit</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          {/* Tone selector pill */}
+          <div ref={toneRef} style={{ position: "relative" }}>
+            <button
+              onClick={() => setToneOpen(o => !o)}
+              style={{
+                display: "flex", alignItems: "center", gap: 5,
+                padding: "4px 10px", borderRadius: 16, fontSize: 11.5, fontWeight: 500,
+                border: `1px solid ${T.border}`, background: T.white, color: T.textSec,
+                cursor: "pointer", fontFamily: "inherit", transition: "all .15s",
+                whiteSpace: "nowrap",
+              }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = T.black}
+              onMouseLeave={e => e.currentTarget.style.borderColor = T.border}
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+              </svg>
+              {tone}
+              <ChevDn />
+            </button>
+
+            {/* Tone dropdown — opens ABOVE */}
+            {toneOpen && (
+              <div style={{
+                position: "absolute", bottom: "calc(100% + 6px)", left: 0,
+                background: T.white, border: `1px solid ${T.border}`, borderRadius: 10,
+                boxShadow: "0 4px 16px rgba(0,0,0,0.12)", padding: "6px 0",
+                zIndex: 20, minWidth: 200,
+              }}>
+                {TONE_OPTIONS.map(t => (
+                  <button
+                    key={t}
+                    onClick={() => { onToneChange(t); setToneOpen(false); }}
+                    onMouseEnter={e => e.currentTarget.style.background = "#f5f4f1"}
+                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 8, width: "100%",
+                      padding: "7px 14px", border: "none", background: "transparent",
+                      fontSize: 12.5, color: t === tone ? T.black : T.textSec,
+                      fontWeight: t === tone ? 600 : 400,
+                      cursor: "pointer", fontFamily: "inherit", textAlign: "left",
+                    }}
+                  >
+                    {t === tone && <CheckIco />}
+                    <span style={{ marginLeft: t === tone ? 0 : 19 }}>{t}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <span style={{ fontSize: 11.5, color: T.textLight }}>⌘ Enter to submit</span>
+        </div>
+
         <button
           onClick={() => value.trim() && !loading && onSubmit(value.trim())}
           disabled={!value.trim() || loading}
@@ -417,7 +493,7 @@ function DraftIntentInput({ onSubmit, loading }) {
               Analysing…
             </>
           ) : (
-            <><SparkIcon /> Analyse</>
+            <>Analyse</>
           )}
         </button>
       </div>
@@ -505,20 +581,6 @@ function AISuggestionsPanel({ suggestions }) {
         )}
       </div>
 
-      {/* Customization prompts */}
-      {suggestions.customizationPrompts?.length > 0 && (
-        <div style={{ marginTop: 12, padding: "10px 14px", background: "#f8f7f4", borderRadius: 8, border: `1px solid ${T.border}` }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>Clarifying Questions</div>
-          {suggestions.customizationPrompts.map((q, i) => (
-            <div key={i} style={{ fontSize: 12.5, color: T.textSec, marginBottom: 4, paddingLeft: 10, borderLeft: `2px solid ${T.border}` }}>
-              {q}
-            </div>
-          ))}
-          <div style={{ fontSize: 11, color: T.textLight, marginTop: 6 }}>
-            Address these in your drafting instructions above for better results.
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -593,7 +655,6 @@ function ClauseSelector({ clauses, onChange, customClauses, onAddCustom }) {
                 hasWarning ? c.warnings.join("; ") : "",
               ].filter(Boolean).join(" · ") || undefined}
             >
-              {isRequired && <LockIco />}
               {c.label}
               {isMandated && (
                 <span style={{ fontSize: 9, fontWeight: 700, padding: "0 4px", borderRadius: 4, background: "rgba(255,255,255,.2)", color: "rgba(255,255,255,.8)" }}>
@@ -601,7 +662,7 @@ function ClauseSelector({ clauses, onChange, customClauses, onAddCustom }) {
                 </span>
               )}
               {hasWarning && (
-                <span style={{ fontSize: 9, fontWeight: 700, padding: "0 4px", borderRadius: 4, background: "#f59e0b", color: "#fff" }}>⚠</span>
+                <span style={{ fontSize: 9, fontWeight: 700, padding: "0 4px", borderRadius: 4, background: "#f59e0b", color: "#fff" }}>!</span>
               )}
               <button
                 onClick={(e) => { e.stopPropagation(); removeClause(c.label); }}
@@ -888,14 +949,75 @@ function RulebookSelector({ selected, onChange, customRulebooks, onAddCustom }) 
 
 // ─── GeneratedDraftView ────────────────────────────────────────────────────
 
-function GeneratedDraftView({ draftData, onReset }) {
+// ─── Render section text with variable replacement ────────────────────────
+
+function renderSectionBody(body, variableValues, dismissedVars) {
+  const variablePattern = /\[([A-Z][A-Z0-9_]+)\]/g;
+  const parts = [];
+  let lastIndex = 0;
+  let match;
+
+  while ((match = variablePattern.exec(body)) !== null) {
+    // Add text before match
+    if (match.index > lastIndex) {
+      parts.push({ type: "text", value: body.slice(lastIndex, match.index) });
+    }
+    const key = match[1];
+    if (dismissedVars.has(key)) {
+      // Dismissed — replace with nothing
+    } else if (variableValues[key]) {
+      // Filled — render normally
+      parts.push({ type: "filled", value: variableValues[key], key });
+    } else {
+      // Unfilled — amber highlight
+      parts.push({ type: "unfilled", key });
+    }
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < body.length) {
+    parts.push({ type: "text", value: body.slice(lastIndex) });
+  }
+
+  return parts.map((p, i) => {
+    if (p.type === "text") return <span key={i}>{p.value}</span>;
+    if (p.type === "filled") {
+      return <span key={i} style={{ fontWeight: 600, color: T.black }}>{p.value}</span>;
+    }
+    // unfilled
+    return (
+      <span key={i} style={{
+        borderBottom: "2px solid #d97706", color: "#92400e",
+        background: "#fef3c7", padding: "0 2px", borderRadius: 2,
+        fontSize: "inherit",
+      }}>
+        {p.key.split("_").map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(" ")}
+      </span>
+    );
+  });
+}
+
+// ─── GeneratedDraftView (two-pane with variable fill) ─────────────────────
+
+function GeneratedDraftView({ draftData, onReset, variables, variableValues, dismissedVars, onVariableChange, onDismissVariable }) {
   const sections = draftData?.sections || [];
   const title = draftData?.title || "Legal Document";
   const metadata = draftData?.metadata || {};
 
+  const activeVars = variables.filter(v => !dismissedVars.has(v.key));
+  const filledCount = activeVars.filter(v => variableValues[v.key]?.trim()).length;
+  const totalCount = activeVars.length;
+  const allComplete = totalCount === 0 || filledCount === totalCount;
+
+  const inputTypeMap = { text: "text", number: "number", date: "date", currency: "text" };
+
   return (
-    <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
-      <div style={{ background: T.black, padding: "14px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+    <div>
+      {/* Header bar */}
+      <div style={{
+        background: T.black, padding: "14px 20px", borderRadius: "12px 12px 0 0",
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+      }}>
         <div>
           <div style={{ color: "white", fontWeight: 700, fontSize: 15 }}>{title}</div>
           <div style={{ color: "rgba(255,255,255,.5)", fontSize: 12, marginTop: 2 }}>
@@ -904,30 +1026,129 @@ function GeneratedDraftView({ draftData, onReset }) {
           </div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          {["Edit", "Export"].map(label => (
-            <button key={label} style={{ padding: "6px 14px", borderRadius: 8, border: "1px solid rgba(255,255,255,.25)", background: "rgba(255,255,255,.1)", color: "white", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-              {label}
-            </button>
+          <button style={{
+            padding: "6px 14px", borderRadius: 8,
+            border: "1px solid rgba(255,255,255,.25)",
+            background: "rgba(255,255,255,.1)", color: "white",
+            fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
+          }}>Edit</button>
+          <button style={{
+            padding: "6px 14px", borderRadius: 8, border: "none",
+            background: allComplete ? "white" : "rgba(255,255,255,.15)",
+            color: allComplete ? T.black : "rgba(255,255,255,.4)",
+            fontSize: 12, fontWeight: 600,
+            cursor: allComplete ? "pointer" : "default",
+            fontFamily: "inherit", transition: "all .2s",
+          }}>Export</button>
+        </div>
+      </div>
+
+      {/* Two-pane layout */}
+      <div className="lex-two-pane" style={{
+        display: "flex", gap: 0,
+        border: `1px solid ${T.border}`, borderTop: "none",
+        borderRadius: "0 0 12px 12px", overflow: "hidden",
+        flexDirection: "row",
+      }}>
+        {/* LEFT PANE — Draft document */}
+        <div style={{
+          flex: "0 0 60%", maxWidth: "60%",
+          padding: "28px 32px", overflowY: "auto", maxHeight: 600,
+          borderRight: `1px solid ${T.border}`,
+          background: T.white,
+        }}>
+          <div style={{ textAlign: "center", marginBottom: 28 }}>
+            <div style={{ fontSize: 11.5, color: T.textMuted, letterSpacing: 1, textTransform: "uppercase", marginBottom: 6 }}>Draft Document</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: T.black }}>{title}</div>
+          </div>
+          {sections.map((s, i) => (
+            <div key={s.id || i} style={{ marginBottom: 22 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.2, textTransform: "uppercase", color: T.black, marginBottom: 8, paddingBottom: 6, borderBottom: `1px solid ${T.border}` }}>
+                {i + 1}. {s.title}
+              </div>
+              <div style={{ fontSize: 13.5, lineHeight: 1.8, color: T.textSec, whiteSpace: "pre-wrap" }}>
+                {renderSectionBody(s.body, variableValues, dismissedVars)}
+              </div>
+            </div>
           ))}
         </div>
-      </div>
 
-      <div style={{ padding: "28px 32px", maxHeight: 480, overflowY: "auto" }}>
-        <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <div style={{ fontSize: 11.5, color: T.textMuted, letterSpacing: 1, textTransform: "uppercase", marginBottom: 6 }}>Draft Document</div>
-          <div style={{ fontSize: 20, fontWeight: 700, color: T.black }}>{title}</div>
-        </div>
-        {sections.map((s, i) => (
-          <div key={s.id || i} style={{ marginBottom: 22 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.2, textTransform: "uppercase", color: T.black, marginBottom: 8, paddingBottom: 6, borderBottom: `1px solid ${T.border}` }}>
-              {i + 1}. {s.title}
+        {/* RIGHT PANE — Variable fill panel */}
+        <div style={{
+          flex: "0 0 40%", maxWidth: "40%",
+          background: "#faf9f7", overflowY: "auto", maxHeight: 600,
+        }}>
+          <div style={{ padding: "18px 20px", borderBottom: `1px solid ${T.border}`, position: "sticky", top: 0, background: "#faf9f7", zIndex: 2 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: T.black, marginBottom: 4 }}>Complete your draft</div>
+            <div style={{ fontSize: 12, color: T.textMuted }}>
+              {allComplete ? (
+                <span style={{ color: "#16a34a", fontWeight: 600 }}>Complete</span>
+              ) : (
+                <>{filledCount} of {totalCount} filled</>
+              )}
             </div>
-            <div style={{ fontSize: 13.5, lineHeight: 1.8, color: T.textSec, whiteSpace: "pre-wrap" }}>{s.body}</div>
           </div>
-        ))}
+
+          <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+            {activeVars.length === 0 && (
+              <div style={{ padding: "20px 0", textAlign: "center", fontSize: 13, color: T.textMuted }}>
+                No variables to fill — your draft is ready.
+              </div>
+            )}
+            {activeVars.map(v => (
+              <div key={v.id} style={{
+                background: T.white, border: `1px solid ${T.border}`, borderRadius: 10,
+                padding: "12px 14px", position: "relative",
+              }}>
+                <button
+                  onClick={() => onDismissVariable(v.key)}
+                  title="Dismiss this variable"
+                  style={{
+                    position: "absolute", top: 8, right: 8,
+                    background: "none", border: "none", cursor: "pointer",
+                    color: T.textMuted, padding: 2, lineHeight: 1,
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.color = T.black}
+                  onMouseLeave={e => e.currentTarget.style.color = T.textMuted}
+                >
+                  <XIco size={10} />
+                </button>
+
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: T.black, marginBottom: 6, paddingRight: 20 }}>
+                  {v.label}
+                </div>
+
+                <input
+                  type={inputTypeMap[v.type] || "text"}
+                  value={variableValues[v.key] || ""}
+                  onChange={e => onVariableChange(v.key, e.target.value)}
+                  placeholder={v.type === "currency" ? "e.g. $100,000" : v.type === "date" ? "" : v.unit ? `e.g. 30 ${v.unit}` : `Enter ${v.label.toLowerCase()}`}
+                  style={{
+                    width: "100%", padding: "7px 10px", borderRadius: 8,
+                    border: `1px solid ${T.border}`, fontSize: 13, color: T.black,
+                    outline: "none", fontFamily: "inherit", boxSizing: "border-box",
+                    background: T.bg,
+                  }}
+                  onFocus={e => e.target.style.borderColor = "#d97706"}
+                  onBlur={e => e.target.style.borderColor = T.border}
+                />
+
+                <div style={{ fontSize: 11, color: T.textLight, marginTop: 5 }}>
+                  Appears in {v.occurrences} clause{v.occurrences !== 1 ? "s" : ""}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
-      <div style={{ borderTop: `1px solid ${T.border}`, padding: "11px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", background: T.bg }}>
+      {/* Footer */}
+      <div style={{
+        padding: "11px 20px",
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+        background: T.bg, borderRadius: "0 0 12px 12px",
+        border: `1px solid ${T.border}`, borderTop: "none",
+      }}>
         <span style={{ fontSize: 12, color: T.textMuted }}>
           Preview only — review carefully before use
           {metadata.llmGenerated === false && " (template-based)"}
@@ -936,6 +1157,14 @@ function GeneratedDraftView({ draftData, onReset }) {
           Start new draft
         </button>
       </div>
+
+      {/* Responsive: stack vertically on narrow screens */}
+      <style>{`
+        @media (max-width: 768px) {
+          .lex-two-pane { flex-direction: column !important; }
+          .lex-two-pane > div { flex: 1 1 auto !important; max-width: 100% !important; border-right: none !important; }
+        }
+      `}</style>
     </div>
   );
 }
@@ -1081,7 +1310,7 @@ function ReactiveDraftPlaceholder() {
         onMouseEnter={e => e.currentTarget.style.background = T.blackHov}
         onMouseLeave={e => e.currentTarget.style.background = T.black}
       >
-        <SparkIcon /> Generate Response Draft
+        Generate Response Draft
       </button>
     </div>
   );
@@ -1117,6 +1346,108 @@ function ErrorDisplay({ error, onRetry }) {
   );
 }
 
+// ─── ReferenceFileSection (simplified) ─────────────────────────────────────
+
+function ReferenceFileSection({ files, onUpload, onRemoveFile }) {
+  const [open, setOpen] = useState(false);
+  const inputRef = useRef(null);
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    if (e.dataTransfer.files.length > 0) onUpload(e.dataTransfer.files);
+  };
+
+  return (
+    <div style={{
+      background: T.white, border: `1px solid ${T.border}`, borderRadius: 12,
+      overflow: "hidden",
+    }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          width: "100%", display: "flex", alignItems: "center",
+          justifyContent: "space-between", padding: "13px 18px",
+          background: "none", border: "none", cursor: "pointer",
+          fontFamily: "inherit",
+        }}
+      >
+        <span style={{ fontSize: 14, fontWeight: 600, color: T.black }}>
+          Add reference file (optional)
+        </span>
+        <span style={{ color: T.textMuted }}>
+          {open ? <ChevUp /> : <PlusIco />}
+        </span>
+      </button>
+
+      {open && (
+        <div style={{ borderTop: `1px solid ${T.border}`, padding: "14px 18px" }}>
+          {/* Uploaded files */}
+          {files.map((f, i) => (
+            <div key={f.fileId} style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "10px 14px", borderRadius: 8,
+              border: `1px solid ${T.border}`, background: T.white,
+              marginBottom: 10,
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <FileIco />
+                <span style={{ fontSize: 13, color: T.black, fontWeight: 500 }}>{f.fileName}</span>
+                {f.parsing && (
+                  <span style={{ fontSize: 11, color: T.textMuted, fontStyle: "italic" }}>Processing...</span>
+                )}
+              </div>
+              <button
+                onClick={() => onRemoveFile(i)}
+                style={{ background: "none", border: "none", cursor: "pointer", color: T.textMuted, padding: 2, lineHeight: 1 }}
+                onMouseEnter={e => e.currentTarget.style.color = T.black}
+                onMouseLeave={e => e.currentTarget.style.color = T.textMuted}
+              >
+                <XIco size={12} />
+              </button>
+            </div>
+          ))}
+
+          {/* Drop zone */}
+          <div
+            onDragOver={e => e.preventDefault()}
+            onDrop={handleDrop}
+            onClick={() => inputRef.current?.click()}
+            onMouseEnter={e => e.currentTarget.style.borderColor = T.black}
+            onMouseLeave={e => e.currentTarget.style.borderColor = T.border}
+            style={{
+              border: `2px dashed ${T.border}`, borderRadius: 10,
+              padding: "20px", textAlign: "center", background: T.bg,
+              cursor: "pointer", transition: "border-color .15s",
+            }}
+          >
+            <div style={{ marginBottom: 4 }}><UploadIco /></div>
+            <div style={{ fontSize: 13, color: T.textSec }}>
+              Drop a file or <span style={{ color: T.black, textDecoration: "underline" }}>browse</span>
+            </div>
+            <div style={{ fontSize: 11, color: T.textMuted, marginTop: 4 }}>PDF, DOCX, TXT · up to 10 MB</div>
+            <input
+              ref={inputRef}
+              type="file"
+              accept=".pdf,.docx,.txt"
+              onChange={e => { if (e.target.files.length > 0) onUpload(e.target.files); e.target.value = ""; }}
+              style={{ display: "none" }}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Strip emojis / non-printable chars from clause/template labels ────────
+function stripEmoji(str) {
+  if (typeof str !== "string") return str;
+  return str
+    .replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 // ─── DraftPage ─────────────────────────────────────────────────────────────
 
 export default function DraftPage() {
@@ -1132,11 +1463,15 @@ export default function DraftPage() {
   const [clauses, setClauses] = useState([]);
   const [template, setTemplate] = useState("");
   const [rulebooks, setRulebooks] = useState([]);
+  const [tone, setTone] = useState("Neutral legal");
 
-  // ── Reference file intelligence ──
-  const [refFiles, setRefFiles] = useState([]);        // Array of { file, fileId, fileName, blocks, parsing }
-  const [selectedBlocks, setSelectedBlocks] = useState([]);
-  const [suggestedBlockIds, setSuggestedBlockIds] = useState([]);
+  // ── Reference file (simplified) ──
+  const [refFiles, setRefFiles] = useState([]);        // Array of { fileId, fileName, parsing }
+
+  // ── Variable fill (post-generation) ──
+  const [variables, setVariables] = useState([]);
+  const [variableValues, setVariableValues] = useState({});
+  const [dismissedVars, setDismissedVars] = useState(new Set());
 
   // ── Company custom library (persists across draft sessions) ──
   const [customClauses, setCustomClauses] = useState([]);
@@ -1191,12 +1526,14 @@ export default function DraftPage() {
     if (result.data) {
       setSuggestions(result.data);
 
-      // Map API response to component state
-      const apiClauses = result.data.suggestions?.clauses || result.data.clauses || [];
+      // Map API response to component state — strip emojis from labels
+      const apiClauses = (result.data.suggestions?.clauses || result.data.clauses || []).map(c =>
+        typeof c === "string" ? stripEmoji(c) : { ...c, label: stripEmoji(c.label) }
+      );
       setClauses(apiClauses);
 
       const apiTemplate = result.data.suggestions?.template;
-      setTemplate(typeof apiTemplate === "string" ? apiTemplate : apiTemplate?.name || "");
+      setTemplate(stripEmoji(typeof apiTemplate === "string" ? apiTemplate : apiTemplate?.name || ""));
 
       const apiRulebook = result.data.suggestions?.rulebook;
       const rbName = typeof apiRulebook === "string" ? apiRulebook : apiRulebook?.name || "";
@@ -1208,32 +1545,9 @@ export default function DraftPage() {
 
       setDraftState(DraftState.SUGGESTIONS_READY);
       setTimeout(() => configRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 200);
-
-      // Auto-suggest blocks for any already-parsed reference files
-      if (refFiles.some(f => f.blocks?.length > 0)) {
-        autoSuggestBlocks(
-          refFiles.flatMap(f => f.blocks || []),
-          text,
-          result.data.documentType,
-          apiClauses,
-        );
-      }
     } else {
       setError(result.error || "Analysis failed");
       setDraftState(DraftState.ERROR);
-    }
-  };
-
-  // ── Auto-suggest relevant blocks from parsed reference files ──
-  const autoSuggestBlocks = async (blocks, intent, documentType, selectedClauses) => {
-    const result = await suggestBlocks(blocks, intent, documentType, selectedClauses);
-    if (result.data?.suggestedBlockIds) {
-      setSuggestedBlockIds(result.data.suggestedBlockIds);
-      // Auto-select suggested blocks
-      setSelectedBlocks(prev => {
-        const newIds = result.data.suggestedBlockIds.filter(id => !prev.includes(id));
-        return [...prev, ...newIds];
-      });
     }
   };
 
@@ -1246,18 +1560,13 @@ export default function DraftPage() {
     if (abortRef.current) abortRef.current.abort();
     abortRef.current = new AbortController();
 
-    // Build reference blocks from selected blocks
-    const referenceBlocks = refFiles
-      .flatMap(f => f.blocks || [])
-      .filter(b => selectedBlocks.includes(b.id))
-      .map(b => ({ title: b.title, preview: b.preview, fullText: b.fullText }));
-
     const config = {
       documentType: suggestions?.documentType || "Legal Document",
       template,
       clauses,
       rulebooks,
-      referenceBlocks,
+      tone,
+      referenceFileId: refFiles[0]?.fileId || null,
       instructions: intentText,
       entities: suggestions?.entities || {},
     };
@@ -1272,6 +1581,9 @@ export default function DraftPage() {
 
     if (result.data) {
       setDraftData(result.data);
+      setVariables(result.data.variables || []);
+      setVariableValues({});
+      setDismissedVars(new Set());
       setDraftState(DraftState.COMPLETE);
     } else {
       setError(result.error || "Generation failed");
@@ -1279,20 +1591,18 @@ export default function DraftPage() {
     }
   };
 
-  // ── Reference file upload & parse ──
+  // ── Reference file upload & parse (simplified) ──
   const handleFileUpload = async (fileList) => {
     const newFiles = Array.from(fileList);
     const fileEntries = newFiles.map(f => ({
       file: f,
       fileId: `f_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       fileName: f.name,
-      blocks: [],
       parsing: true,
     }));
 
     setRefFiles(prev => [...prev, ...fileEntries]);
 
-    // Parse each file
     for (const entry of fileEntries) {
       const result = await parseDocument(entry.file);
 
@@ -1301,52 +1611,25 @@ export default function DraftPage() {
           ? {
               ...f,
               parsing: false,
-              blocks: result.data?.blocks || [],
               fileId: result.data?.fileId || f.fileId,
+              fileName: result.data?.fileName || f.fileName,
             }
           : f
       ));
-
-      // Auto-suggest if we already have suggestions
-      if (result.data?.blocks?.length > 0 && suggestions) {
-        autoSuggestBlocks(
-          result.data.blocks,
-          intentText,
-          suggestions.documentType,
-          clauses,
-        );
-      }
     }
   };
 
   const handleRemoveFile = (index) => {
-    const removed = refFiles[index];
-    if (removed?.blocks) {
-      const blockIds = removed.blocks.map(b => b.id);
-      setSelectedBlocks(prev => prev.filter(id => !blockIds.includes(id)));
-      setSuggestedBlockIds(prev => prev.filter(id => !blockIds.includes(id)));
-    }
     setRefFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleToggleBlock = (blockId) => {
-    setSelectedBlocks(prev =>
-      prev.includes(blockId) ? prev.filter(id => id !== blockId) : [...prev, blockId]
-    );
+  // ── Variable fill handlers ──
+  const handleVariableChange = (key, value) => {
+    setVariableValues(prev => ({ ...prev, [key]: value }));
   };
 
-  const handleSelectAllBlocks = (fileIndex) => {
-    const file = refFiles[fileIndex];
-    if (!file?.blocks) return;
-    const blockIds = file.blocks.map(b => b.id);
-    setSelectedBlocks(prev => [...new Set([...prev, ...blockIds])]);
-  };
-
-  const handleDeselectAllBlocks = (fileIndex) => {
-    const file = refFiles[fileIndex];
-    if (!file?.blocks) return;
-    const blockIds = new Set(file.blocks.map(b => b.id));
-    setSelectedBlocks(prev => prev.filter(id => !blockIds.has(id)));
+  const handleDismissVariable = (key) => {
+    setDismissedVars(prev => new Set([...prev, key]));
   };
 
   // ── Reset ──
@@ -1361,9 +1644,11 @@ export default function DraftPage() {
     setClauses([]);
     setTemplate("");
     setRulebooks([]);
+    setTone("Neutral legal");
     setRefFiles([]);
-    setSelectedBlocks([]);
-    setSuggestedBlockIds([]);
+    setVariables([]);
+    setVariableValues({});
+    setDismissedVars(new Set());
     setError(null);
     setUsingFallback(false);
     // Note: customClauses / customTemplates / customRulebooks intentionally
@@ -1460,7 +1745,7 @@ export default function DraftPage() {
                   {stateAtLeast(draftState, DraftState.INTENT_INPUT) && (
                     <div className="lex-fadein">
                       <StepLabel n="1" label="Write your drafting instructions" />
-                      <DraftIntentInput onSubmit={handleAnalyse} loading={draftState === DraftState.ANALYSING} />
+                      <DraftIntentInput onSubmit={handleAnalyse} loading={draftState === DraftState.ANALYSING} tone={tone} onToneChange={setTone} />
                     </div>
                   )}
 
@@ -1568,21 +1853,6 @@ export default function DraftPage() {
                     )}
                   </div>
 
-                  {/* Clarifying questions (collapsible) */}
-                  {suggestions.customizationPrompts?.length > 0 && (
-                    <div className="lex-fadein" style={{ padding: "8px 14px", background: "#f8f7f4", borderRadius: 8, border: `1px solid ${T.border}` }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 4 }}>Clarifying Questions</div>
-                      {suggestions.customizationPrompts.map((q, i) => (
-                        <div key={i} style={{ fontSize: 12, color: T.textSec, marginBottom: 3, paddingLeft: 10, borderLeft: `2px solid ${T.border}` }}>
-                          {q}
-                        </div>
-                      ))}
-                      <div style={{ fontSize: 11, color: T.textLight, marginTop: 4 }}>
-                        Click "Edit" above to refine your instructions.
-                      </div>
-                    </div>
-                  )}
-
                   {/* Configuration — Template, Clauses, Rulebooks */}
                   <div ref={configRef} className="lex-fadein">
                     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -1613,20 +1883,13 @@ export default function DraftPage() {
                     </div>
                   </div>
 
-                  {/* Reference Files */}
+                  {/* Add context (optional) — Reference file */}
                   <div className="lex-fadein">
-                    <ConfigurationCard title="Reference Files (optional)" defaultOpen={false}>
-                      <ReferenceFileIntelligence
-                        files={refFiles}
-                        selectedBlocks={selectedBlocks}
-                        suggestedBlockIds={suggestedBlockIds}
-                        onUpload={handleFileUpload}
-                        onRemoveFile={handleRemoveFile}
-                        onToggleBlock={handleToggleBlock}
-                        onSelectAllBlocks={handleSelectAllBlocks}
-                        onDeselectAllBlocks={handleDeselectAllBlocks}
-                      />
-                    </ConfigurationCard>
+                    <ReferenceFileSection
+                      files={refFiles}
+                      onUpload={handleFileUpload}
+                      onRemoveFile={handleRemoveFile}
+                    />
                   </div>
 
                   {/* Sticky Generate bar */}
@@ -1672,7 +1935,8 @@ export default function DraftPage() {
                             Generating…
                           </>
                         ) : (
-                          <><SparkIcon /> Generate Draft</>
+                          <>Generate Draft</>
+
                         )}
                       </button>
                     </div>
@@ -1685,16 +1949,26 @@ export default function DraftPage() {
                 <ErrorDisplay error={error} onRetry={handleRetry} />
               )}
 
-              {/* Generated output */}
-              {draftState === DraftState.COMPLETE && draftData && (
-                <div className="lex-fadein">
-                  <GeneratedDraftView draftData={draftData} onReset={handleReset} />
-                </div>
-              )}
             </>
           )}
 
         </div>
+
+        {/* Generated output — outside narrow container for two-pane layout */}
+        {draftState === DraftState.COMPLETE && draftData && (
+          <div className="lex-fadein" style={{ marginTop: 24 }}>
+            <GeneratedDraftView
+              draftData={draftData}
+              onReset={handleReset}
+              variables={variables}
+              variableValues={variableValues}
+              dismissedVars={dismissedVars}
+              onVariableChange={handleVariableChange}
+              onDismissVariable={handleDismissVariable}
+            />
+          </div>
+        )}
+
       </div>
     </>
   );

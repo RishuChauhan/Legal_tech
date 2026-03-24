@@ -47,13 +47,21 @@ const MOCK_DRAFT = {
   sections: [
     { id: "s0", title: "PARTIES", body: 'This Vendor Agreement ("Agreement") is entered into by and between:\n\n1. First Party (hereinafter referred to as "Client")\n\n2. Second Party (hereinafter referred to as "Vendor")\n\n(each a "Party" and collectively the "Parties").', clauseSource: null, editable: true },
     { id: "s1", title: "RECITALS", body: "WHEREAS, the Parties desire to enter into this Vendor Agreement to establish the terms and conditions governing their relationship;\n\nWHEREAS, each Party has the legal capacity and authority to enter into this Agreement;\n\nNOW, THEREFORE, in consideration of the mutual covenants and agreements set forth herein, the Parties agree as follows:", clauseSource: null, editable: true },
-    { id: "s2", title: "CONFIDENTIALITY", body: 'Each Party agrees to keep confidential all information disclosed by the other Party that is designated as confidential or that reasonably should be understood to be confidential ("Confidential Information"). This obligation shall survive the termination of this Agreement for a period of [__] years.', clauseSource: "Confidentiality", editable: true },
+    { id: "s2", title: "CONFIDENTIALITY", body: 'Each Party agrees to keep confidential all information disclosed by the other Party that is designated as confidential or that reasonably should be understood to be confidential ("Confidential Information"). This obligation shall survive the termination of this Agreement for a period of [CONFIDENTIALITY_PERIOD_YEARS] years.', clauseSource: "Confidentiality", editable: true },
     { id: "s3", title: "INDEMNITY", body: "Each Party shall indemnify, defend, and hold harmless the other Party from and against any claims, damages, losses, costs, and expenses (including reasonable attorneys' fees) arising out of or relating to any breach of this Agreement.", clauseSource: "Indemnity", editable: true },
-    { id: "s4", title: "LIMITATION OF LIABILITY", body: "IN NO EVENT SHALL EITHER PARTY BE LIABLE TO THE OTHER PARTY FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, REGARDLESS OF THE CAUSE OF ACTION OR THE THEORY OF LIABILITY.", clauseSource: "Limitation of Liability", editable: true },
-    { id: "s5", title: "GOVERNING LAW", body: "This Agreement shall be governed by and construed in accordance with the laws of [__], without regard to its conflict of laws provisions.", clauseSource: "Governing Law", editable: true },
-    { id: "s6", title: "EXECUTION", body: "IN WITNESS WHEREOF, the Parties have executed this Agreement as of the date last written below.\n\nFirst Party\n\nBy: ________________________\nName: ________________________\nTitle: ________________________\nDate: ________________________\n\nSecond Party\n\nBy: ________________________\nName: ________________________\nTitle: ________________________\nDate: ________________________", clauseSource: null, editable: true },
+    { id: "s4", title: "LIMITATION OF LIABILITY", body: "IN NO EVENT SHALL EITHER PARTY BE LIABLE TO THE OTHER PARTY FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, REGARDLESS OF THE CAUSE OF ACTION OR THE THEORY OF LIABILITY. THE TOTAL LIABILITY OF EITHER PARTY SHALL NOT EXCEED [LIABILITY_CAP].", clauseSource: "Limitation of Liability", editable: true },
+    { id: "s5", title: "GOVERNING LAW", body: "This Agreement shall be governed by and construed in accordance with the laws of [GOVERNING_JURISDICTION], without regard to its conflict of laws provisions.", clauseSource: "Governing Law", editable: true },
+    { id: "s6", title: "TERMINATION", body: "This Agreement may be terminated: (a) by mutual written agreement of the Parties; (b) by either Party upon [NOTICE_PERIOD_DAYS] days' written notice; (c) immediately by either Party upon material breach by the other Party that remains uncured after [CURE_PERIOD_DAYS] days' notice.", clauseSource: "Termination", editable: true },
+    { id: "s7", title: "EXECUTION", body: "IN WITNESS WHEREOF, the Parties have executed this Agreement as of the date last written below.\n\nFirst Party\n\nBy: ________________________\nName: ________________________\nTitle: ________________________\nDate: ________________________\n\nSecond Party\n\nBy: ________________________\nName: ________________________\nTitle: ________________________\nDate: ________________________", clauseSource: null, editable: true },
   ],
-  metadata: { templateUsed: "Vendor Service Agreement", clauseCount: 3, rulebooksApplied: ["Corporate Contract Policy"], wordCount: 280, llmGenerated: false },
+  variables: [
+    { id: "v1", key: "CONFIDENTIALITY_PERIOD_YEARS", label: "Confidentiality Period Years", type: "number", unit: "years", occurrences: 1 },
+    { id: "v2", key: "LIABILITY_CAP", label: "Liability Cap", type: "currency", unit: null, occurrences: 1 },
+    { id: "v3", key: "GOVERNING_JURISDICTION", label: "Governing Jurisdiction", type: "text", unit: null, occurrences: 1 },
+    { id: "v4", key: "NOTICE_PERIOD_DAYS", label: "Notice Period Days", type: "number", unit: "days", occurrences: 1 },
+    { id: "v5", key: "CURE_PERIOD_DAYS", label: "Cure Period Days", type: "number", unit: "days", occurrences: 1 },
+  ],
+  metadata: { templateUsed: "Vendor Service Agreement", clauseCount: 5, rulebooksApplied: ["Corporate Contract Policy"], wordCount: 320, llmGenerated: false },
 };
 
 // ─── Helper: fetch with timeout + retry ────────────────────────────────────
@@ -158,22 +166,5 @@ export async function parseDocument(file, signal) {
     `${API_BASE}/documents/parse`,
     { method: "POST", body: formData, signal },
     { timeoutMs: 60000 },
-  );
-}
-
-/**
- * Suggest relevant blocks from parsed documents.
- * Returns { data, error }.
- */
-export async function suggestBlocks(blocks, intent, documentType, selectedClauses, signal) {
-  return await fetchWithRetry(
-    `${API_BASE}/documents/suggest-blocks`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ blocks, intent, documentType, selectedClauses }),
-      signal,
-    },
-    { timeoutMs: 10000 },
   );
 }

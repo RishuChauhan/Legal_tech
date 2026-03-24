@@ -1,9 +1,12 @@
 import { Router } from "express";
 import multer from "multer";
-import { parseDocument } from "../services/docParser.js";
-import { suggestRelevantBlocks } from "../services/docParser.js";
+import { parseDocument, suggestRelevantBlocks } from "../services/docParser.js";
 
 const router = Router();
+
+// In-memory store for reference context keyed by fileId
+export const referenceContextStore = new Map();
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
@@ -27,8 +30,53 @@ router.post("/parse", upload.single("file"), async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ error: "No file uploaded" });
     }
+
+    // Step 1: Full parse (keeps all existing logic intact)
     const result = await parseDocument(req.file);
-    res.json(result);
+
+    // Step 2: Silently run block suggestion and build reference context
+    const blocks = result.blocks || [];
+    const wordCount = blocks.reduce((sum, b) => sum + (b.fullText || "").split(/\s+/).length, 0);
+    const pageCount = Math.max(1, Math.ceil(wordCount / 300));
+
+    if (blocks.length > 0) {
+      // Score all blocks using suggestRelevantBlocks with empty context
+      // (intent/clauses not known yet — score by importance and type)
+      const scored = blocks.map(block => {
+        let score = 0;
+        if (block.importance === "high") score += 20;
+        if (block.type === "obligation") score += 10;
+        if (block.type === "clause") score += 5;
+        // Longer blocks are more useful for context
+        const textLen = (block.fullText || "").split(/\s+/).length;
+        if (textLen > 50) score += 5;
+        return { block, score };
+      });
+
+      // Take top 6 by score
+      scored.sort((a, b) => b.score - a.score);
+      const topBlocks = scored.slice(0, 6).map(s => s.block);
+
+      // Build reference context string with truncated text (400 words max)
+      const contextParts = topBlocks.map(b => {
+        const words = (b.fullText || "").split(/\s+/);
+        const truncated = words.slice(0, 400).join(" ");
+        return `[${b.title}]\n${truncated}`;
+      });
+
+      const referenceContext = "Reference document context (use for stylistic and structural guidance when drafting equivalent sections):\n\n" +
+        contextParts.join("\n\n");
+
+      referenceContextStore.set(result.fileId, referenceContext);
+    }
+
+    // Step 3: Return simplified response (no blocks)
+    res.json({
+      fileId: result.fileId,
+      fileName: result.fileName,
+      wordCount,
+      pageCount,
+    });
   } catch (err) {
     console.error("Parse error:", err);
     if (err.message?.includes("Unsupported file type")) {
@@ -38,7 +86,7 @@ router.post("/parse", upload.single("file"), async (req, res) => {
   }
 });
 
-// POST /api/documents/suggest-blocks
+// POST /api/documents/suggest-blocks (kept for backwards compatibility)
 router.post("/suggest-blocks", async (req, res) => {
   try {
     const { blocks, intent, documentType, selectedClauses } = req.body;
